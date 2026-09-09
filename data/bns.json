@@ -1,0 +1,17 @@
+{
+  "act": "Bharatiya Nyaya Sanhita, 2023",
+  "source": "India Code",
+  "source_url": "https://www.indiacode.nic.in/",
+  "sections": {
+    "302": {
+  "title": "Section 302",
+  "verified": true,
+  "note": "This is not the BNS provision for theft or snatching."
+},
+    "304": {
+      "title": "Snatching",
+      "text": "Theft is snatching if, in order to commit theft, the offender suddenly or quickly or forcibly seizes or secures or grabs or takes away from any person or from his possession any movable property.",
+      "verified": true
+    }
+  }
+}
