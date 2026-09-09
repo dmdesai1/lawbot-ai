@@ -114,11 +114,28 @@ export default async function handler(req, res) {
 
     /*
       DETECT SECTION NUMBER
+
+      Supports:
+
+      IPC 302
+      IPC Section 302
+      BNS 103
+      BNS Section 103
+      CrPC 154
+      Section 138
     */
 
-    const sectionMatch = q.match(
-      /\b(?:section|sec\.?)\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
-    );
+    const sectionMatch =
+      q.match(
+        /\b(?:section|sec\.?)\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
+      ) ||
+      q.match(
+        /\b(?:BNS|BNSS|BSA|IPC|CrPC|CPC)\s*[-:]?\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
+      ) ||
+      q.match(
+        /\b(?:NI\s*ACT|N\.I\.\s*ACT)\s*[-:]?\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
+      );
+
 
     const sectionNumber =
       sectionMatch
@@ -157,15 +174,18 @@ export default async function handler(req, res) {
 
         const sourceUrl =
           exactData.url ||
+          section.url ||
           `https://indiacode.ecourtsindia.com/${selectedAct.id}/section/${sectionNumber}/`;
 
 
         /*
-          VERIFIED JUDGMENTS CONNECTED
-          TO THIS PROVISION
+          VERIFIED JUDGMENTS
+          
+          First use judgments already attached to the
+          legal database response.
         */
 
-        const judgments =
+        let judgments =
           Array.isArray(exactData.judgments)
             ? exactData.judgments.map(judgment => ({
 
@@ -173,6 +193,7 @@ export default async function handler(req, res) {
 
                 caseName:
                   judgment.title ||
+                  judgment.case_name ||
                   null,
 
                 court:
@@ -181,11 +202,13 @@ export default async function handler(req, res) {
                   null,
 
                 courtLevel:
+                  judgment.court_level ||
                   judgment.court ||
                   null,
 
                 date:
                   judgment.date ||
+                  judgment.decision_date ||
                   null,
 
                 citation:
@@ -206,6 +229,7 @@ export default async function handler(req, res) {
 
                 ratio:
                   judgment.ratio_decidendi ||
+                  judgment.ratio ||
                   null,
 
                 appliedToSection:
@@ -222,10 +246,145 @@ export default async function handler(req, res) {
 
                 source:
                   judgment.url ||
+                  judgment.source ||
                   null
 
               }))
             : [];
+
+
+        /*
+          IF THE SECTION ENDPOINT DID NOT RETURN
+          JUDGMENTS, CONNECT OUR VERIFIED
+          /api/judgments ENDPOINT.
+        */
+
+        if (judgments.length === 0) {
+
+          try {
+
+            const protocol =
+              req.headers["x-forwarded-proto"] ||
+              "https";
+
+            const host =
+              req.headers.host;
+
+            if (host) {
+
+              const judgmentUrl =
+                `${protocol}://${host}/api/judgments?` +
+                new URLSearchParams({
+                  act: selectedAct.id,
+                  section: sectionNumber
+                }).toString();
+
+
+              const judgmentResponse =
+                await fetch(judgmentUrl);
+
+
+              if (judgmentResponse.ok) {
+
+                const judgmentData =
+                  await judgmentResponse.json();
+
+
+                if (
+                  Array.isArray(judgmentData.judgments)
+                ) {
+
+                  judgments =
+                    judgmentData.judgments
+                      .filter(judgment =>
+                        judgment &&
+                        judgment.verified !== false
+                      )
+                      .map(judgment => ({
+
+                        verified: true,
+
+                        caseName:
+                          judgment.caseName ||
+                          judgment.case_name ||
+                          judgment.title ||
+                          null,
+
+                        court:
+                          judgment.court ||
+                          judgment.court_name ||
+                          null,
+
+                        courtLevel:
+                          judgment.courtLevel ||
+                          judgment.court_level ||
+                          null,
+
+                        date:
+                          judgment.date ||
+                          judgment.decision_date ||
+                          null,
+
+                        citation:
+                          judgment.citation ||
+                          null,
+
+                        cnr:
+                          judgment.cnr ||
+                          null,
+
+                        precedentialValue:
+                          judgment.precedentialValue ||
+                          judgment.precedential_value ||
+                          null,
+
+                        courtMarking:
+                          judgment.courtMarking ||
+                          judgment.court_marking ||
+                          null,
+
+                        ratio:
+                          judgment.ratio ||
+                          judgment.ratio_decidendi ||
+                          null,
+
+                        appliedToSection:
+                          judgment.appliedToSection ||
+                          judgment.applied_to_this_section ||
+                          null,
+
+                        basis:
+                          judgment.basis ||
+                          null,
+
+                        decidedUnder:
+                          judgment.decidedUnder ||
+                          judgment.decided_under ||
+                          null,
+
+                        source:
+                          judgment.source ||
+                          judgment.url ||
+                          null
+
+                      }));
+
+                }
+
+              }
+
+            }
+
+          } catch (judgmentError) {
+
+            console.error(
+              "Verified judgment connection error:",
+              judgmentError
+            );
+
+          }
+
+        }
 
 
         /*
@@ -241,11 +400,20 @@ export default async function handler(req, res) {
                   null,
 
                 section:
+                  item.section ||
                   item.number ||
                   null,
 
                 relation:
                   item.relation ||
+                  null,
+
+                score:
+                  item.score ||
+                  null,
+
+                url:
+                  item.url ||
                   null
 
               }))
@@ -495,7 +663,10 @@ export default async function handler(req, res) {
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "LawBot sections error:",
+      error
+    );
 
     return res.status(500).json({
 
