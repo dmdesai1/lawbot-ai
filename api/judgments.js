@@ -1,12 +1,25 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
+  if (req.method !== "POST" && req.method !== "GET") {
     return res.status(405).json({
       error: "Method not allowed"
     });
   }
 
   try {
-    const { act, section, court } = req.body || {};
+    let act;
+    let section;
+    let court;
+
+    if (req.method === "POST") {
+      const body = req.body || {};
+      act = body.act;
+      section = body.section;
+      court = body.court;
+    } else {
+      act = req.query?.act;
+      section = req.query?.section;
+      court = req.query?.court;
+    }
 
     const params = new URLSearchParams();
 
@@ -52,4 +65,4 @@ export default async function handler(req, res) {
       error: "Server error"
     });
   }
-}
+      }
