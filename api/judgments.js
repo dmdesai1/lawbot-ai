@@ -540,10 +540,21 @@ export default async function handler(req, res) {
               null,
 
             decision:
-              judgment.decision ||
-              judgment.order ||
-              judgment.holding ||
-              null,
+  (
+    judgment.decision &&
+    !/\.(pdf|doc|docx)$/i.test(
+      String(judgment.decision).trim()
+    )
+  )
+    ? judgment.decision
+    : (
+        judgment.holding &&
+        !/\.(pdf|doc|docx)$/i.test(
+          String(judgment.holding).trim()
+        )
+      )
+        ? judgment.holding
+        : null,
 
             ratio:
               judgment.ratio_decidendi ||
