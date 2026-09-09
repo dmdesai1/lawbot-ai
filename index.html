@@ -484,7 +484,7 @@ footer {
 </div>
 
 <footer>
-  © 2026 LawBot AI — Legal Research Platform
+  © 2026 LawBot AI — Legal research platform Created by DT DESAI & SONS
 </footer>
 
 <script>
@@ -532,22 +532,28 @@ async function searchLaw() {
       throw new Error(data.error || "Something went wrong.");
     }
 
-    const safeAnswer = String(data.answer || "")
+        const rawAnswer = String(data.answer || "");
+
+    // Clean and format the AI answer
+    const safeAnswer = rawAnswer
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/^### (.*)$/gm, "<h3>$1</h3>")
+      .replace(/^## (.*)$/gm, "<h2>$1</h2>")
       .replace(/\n/g, "<br>");
 
     const verifiedBadge = data.verified
-      ? `<span class="verified">✓ Verified source</span>`
-      : "";
+      ? `<span class="verified">✓ Verified Source</span>`
+      : `<span class="verified" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;">AI Answer</span>`;
 
     const source = data.source
       ? `
         <div class="source">
-          Source:
+          <span>📚 Source</span>
           <a href="${data.source}" target="_blank" rel="noopener">
-            View legal source ↗
+            View Original Legal Source ↗
           </a>
         </div>
       `
@@ -557,18 +563,85 @@ async function searchLaw() {
       <div class="answer">
 
         <div class="answer-header">
-          <div class="answer-title">🤖 LawBot AI</div>
+          <div>
+            <div class="answer-title">⚖️ LawBot AI</div>
+            <div style="font-size:13px;color:#667085;margin-top:4px;">
+              Legal Research Result
+            </div>
+          </div>
+
           ${verifiedBadge}
         </div>
 
-        <div>
+        <div style="
+          background:#f8fafc;
+          border:1px solid #e4e7ec;
+          border-radius:12px;
+          padding:20px;
+          font-size:15px;
+        ">
           ${safeAnswer}
         </div>
 
         ${source}
 
+        <div style="
+          display:flex;
+          gap:10px;
+          margin-top:18px;
+          flex-wrap:wrap;
+        ">
+          <button
+            id="copyAnswer"
+            style="
+              border:1px solid #d0d5dd;
+              background:white;
+              padding:9px 14px;
+              border-radius:9px;
+              cursor:pointer;
+              font-weight:600;
+            "
+          >
+            📋 Copy Answer
+          </button>
+
+          <button
+            id="newSearch"
+            style="
+              border:none;
+              background:#101828;
+              color:white;
+              padding:9px 14px;
+              border-radius:9px;
+              cursor:pointer;
+              font-weight:600;
+            "
+          >
+            🔎 New Search
+          </button>
+        </div>
+
       </div>
     `;
+
+    document.getElementById("copyAnswer").addEventListener("click", async function() {
+      try {
+        await navigator.clipboard.writeText(rawAnswer);
+        this.textContent = "✓ Copied";
+      } catch {
+        this.textContent = "Copy unavailable";
+      }
+    });
+
+    document.getElementById("newSearch").addEventListener("click", function() {
+      input.value = "";
+      input.focus();
+      answerArea.innerHTML = "";
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    });
 
     answerArea.scrollIntoView({
       behavior: "smooth",
@@ -585,7 +658,6 @@ async function searchLaw() {
         </p>
       </div>
     `;
-
   }
 
   button.disabled = false;
@@ -602,5 +674,5 @@ input.addEventListener("keydown", function(event) {
 
 </script>
 
-</body>
-</html>
+</body>Platform
+
