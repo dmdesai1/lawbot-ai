@@ -1,11 +1,23 @@
-<!DOCTYPE html>
+            <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LawBot AI - Legal Research Assistant</title>
+
+<title>LawBot AI — Legal Research Assistant</title>
 
 <style>
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #667085;
+  --border: #e4e7ec;
+  --dark: #101828;
+  --accent: #b8860b;
+  --accent-soft: #fff8e1;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -13,151 +25,351 @@
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background: #f5f7fb;
-  color: #172033;
+  font-family: Inter, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
 }
 
+/* HEADER */
+
 header {
-  background: #101828;
+  background: rgba(16,24,40,0.97);
   color: white;
-  padding: 22px;
-  text-align: center;
+  padding: 18px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 15px rgba(0,0,0,.12);
+}
+
+.nav {
+  max-width: 1150px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .logo {
-  font-size: 28px;
-  font-weight: bold;
+  font-size: 23px;
+  font-weight: 800;
 }
 
-.tagline {
-  margin-top: 6px;
-  color: #b8c2d6;
-  font-size: 14px;
+.logo span {
+  color: #e5b94b;
 }
+
+.nav-right {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-btn {
+  background: transparent;
+  color: #d0d5dd;
+  border: 1px solid #344054;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+/* HERO */
 
 .hero {
+  max-width: 1050px;
+  margin: auto;
   text-align: center;
-  padding: 55px 20px 35px;
+  padding: 75px 20px 45px;
+}
+
+.badge {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: #8a6500;
+  border: 1px solid #f1d47a;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 18px;
 }
 
 .hero h1 {
-  font-size: 34px;
-  margin-bottom: 12px;
+  font-size: clamp(34px, 7vw, 58px);
+  line-height: 1.08;
+  letter-spacing: -1.8px;
+  margin-bottom: 18px;
+}
+
+.hero h1 span {
+  color: #a87800;
 }
 
 .hero p {
-  color: #667085;
-  max-width: 600px;
+  max-width: 680px;
   margin: auto;
-  line-height: 1.6;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+/* SEARCH */
+
+.search-wrap {
+  max-width: 850px;
+  margin: 32px auto 0;
 }
 
 .search-box {
-  max-width: 700px;
-  margin: 25px auto;
   display: flex;
-  background: white;
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 7px;
+  border-radius: 16px;
+  box-shadow: 0 12px 35px rgba(16,24,40,.10);
 }
 
 .search-box input {
   flex: 1;
   border: none;
   outline: none;
-  padding: 15px;
+  background: transparent;
+  padding: 17px;
   font-size: 16px;
+  min-width: 0;
 }
 
 .search-box button {
   border: none;
-  background: #101828;
+  background: var(--dark);
   color: white;
-  padding: 0 22px;
-  border-radius: 9px;
-  font-size: 16px;
+  padding: 0 28px;
+  border-radius: 11px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.container {
-  max-width: 1000px;
-  margin: 10px auto 50px;
-  padding: 20px;
+.search-box button:hover {
+  opacity: .9;
 }
+
+.search-box button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+.examples {
+  margin-top: 13px;
+  color: #98a2b3;
+  font-size: 13px;
+}
+
+/* MAIN */
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 20px 60px;
+}
+
+.section-title {
+  font-size: 25px;
+  margin: 20px 0 18px;
+}
+
+/* CARDS */
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 18px;
 }
 
 .card {
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 17px;
   padding: 25px;
-  border-radius: 14px;
-  box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+  transition: .2s;
+  box-shadow: 0 4px 15px rgba(16,24,40,.04);
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 25px rgba(16,24,40,.09);
+}
+
+.card-icon {
+  font-size: 30px;
+  margin-bottom: 14px;
 }
 
 .card h2 {
-  margin: 10px 0;
-  font-size: 20px;
+  font-size: 19px;
+  margin-bottom: 9px;
 }
 
 .card p {
-  color: #667085;
-  line-height: 1.5;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 14px;
 }
 
-.card button {
-  margin-top: 18px;
-  padding: 10px 16px;
-  border: 1px solid #d0d5dd;
-  background: white;
-  border-radius: 8px;
-}
+/* TRUST */
 
-.ai {
-  margin-top: 25px;
-  background: #101828;
+.trust {
+  margin-top: 24px;
+  background: var(--dark);
   color: white;
-  padding: 30px;
-  border-radius: 15px;
+  border-radius: 18px;
+  padding: 27px;
 }
 
-.ai p {
-  color: #cbd5e1;
-  margin-top: 8px;
-  line-height: 1.5;
+.trust h2 {
+  margin-bottom: 8px;
 }
+
+.trust p {
+  color: #cbd5e1;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* ANSWER */
+
+.answer-area {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+}
+
+.answer {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: 0 8px 25px rgba(16,24,40,.07);
+  line-height: 1.75;
+  white-space: normal;
+}
+
+.answer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.answer-title {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #ecfdf3;
+  color: #027a48;
+  border: 1px solid #abefc6;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.source {
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.source a {
+  color: #175cd3;
+  text-decoration: none;
+}
+
+/* LOADING */
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: #667085;
+  border-radius: 50%;
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: .25; }
+  to { opacity: 1; }
+}
+
+/* FOOTER */
 
 .disclaimer {
   text-align: center;
-  padding: 25px;
+  padding: 20px;
   color: #667085;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 footer {
-  background: #101828;
+  background: var(--dark);
   color: #98a2b3;
   text-align: center;
-  padding: 20px;
-  font-size: 13px;
+  padding: 22px;
+  font-size: 12px;
 }
 
-@media(max-width:600px) {
+/* MOBILE */
+
+@media(max-width:750px) {
+
+  header {
+    padding: 15px;
+  }
+
+  .nav-right {
+    display: none;
+  }
+
+  .hero {
+    padding: 55px 16px 35px;
+  }
+
   .hero h1 {
-    font-size: 28px;
+    letter-spacing: -1px;
   }
 
   .search-box {
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
   }
 
   .search-box button {
-    padding: 13px;
+    padding: 14px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .answer {
+    padding: 20px;
   }
 }
 </style>
@@ -166,144 +378,229 @@ footer {
 <body>
 
 <header>
-  <div class="logo">⚖️ LawBot AI</div>
-  <div class="tagline">AI-Powered Legal Research & Legal Information</div>
+  <div class="nav">
+    <div class="logo">⚖️ Law<span>Bot</span> AI</div>
+
+    <div class="nav-right">
+      <button class="nav-btn">Judgments</button>
+      <button class="nav-btn">Acts & Sections</button>
+    </div>
+  </div>
 </header>
 
 <section class="hero">
 
-  <h1>Find Law. Find Judgments. Ask AI.</h1>
+  <div class="badge">⚖️ AI-POWERED LEGAL RESEARCH</div>
+
+  <h1>
+    Find Law.<br>
+    <span>Find Answers.</span>
+  </h1>
 
   <p>
-    Search legal judgments, Acts and Sections and get
-    AI-assisted legal research in one place.
+    Search Indian laws, sections and legal authorities.
+    Ask questions in ordinary language and get AI-assisted legal research.
   </p>
 
-  <div class="search-box">
-    <input
-      type="text"
-      placeholder="Ask a legal question or search a judgment..."
-    >
-    <button>Search</button>
+  <div class="search-wrap">
+
+    <div class="search-box">
+
+      <input
+        id="queryInput"
+        type="text"
+        placeholder="Ask a legal question..."
+        autocomplete="off"
+      >
+
+      <button id="searchBtn">
+        Search
+      </button>
+
+    </div>
+
+    <div class="examples">
+      Try: “What is Section 302 of the BNS?”
+    </div>
+
   </div>
 
 </section>
 
 <div class="container">
 
+  <h2 class="section-title">Legal Research</h2>
+
   <div class="cards">
 
     <div class="card">
-      <div style="font-size:32px;">🔎</div>
+      <div class="card-icon">⚖️</div>
       <h2>Judgment Search</h2>
       <p>
         Find relevant Supreme Court and High Court judgments.
+        Verified case research is coming next.
       </p>
-      <button>Search Judgments</button>
     </div>
 
     <div class="card">
-      <div style="font-size:32px;">📚</div>
+      <div class="card-icon">📚</div>
       <h2>Acts & Sections</h2>
       <p>
-        Search Indian laws, Acts and individual legal sections.
+        Search Indian Acts and individual legal provisions
+        using connected legal sources.
       </p>
-      <button>Search Laws</button>
     </div>
 
     <div class="card">
-      <div style="font-size:32px;">🌍</div>
+      <div class="card-icon">🌍</div>
       <h2>International Law</h2>
       <p>
-        Research treaties, conventions and international legal sources.
+        Research treaties, conventions and international
+        legal materials.
       </p>
-      <button>Explore</button>
     </div>
 
   </div>
 
-  <div class="ai">
+  <div class="trust">
 
-    <h2>🤖 AI Legal Assistant</h2>
+    <h2>🔐 Built for Reliable Legal Research</h2>
 
     <p>
-      Ask a legal question in ordinary language.
-      LawBot will eventually search legal sources,
-      identify relevant authorities and explain them.
+      LawBot is being built to retrieve legal source material
+      first and use AI to explain it, rather than relying only
+      on the AI's memory.
     </p>
 
   </div>
 
 </div>
 
+<div class="answer-area" id="answerArea"></div>
+
 <div class="disclaimer">
   ⚠️ LawBot AI provides legal information and research assistance.
-  It is not a substitute for professional legal advice.
+  It is not a substitute for advice from a qualified lawyer.
 </div>
 
 <footer>
   © 2026 LawBot AI — Legal Research Platform
 </footer>
+
 <script>
-document.querySelector("button").addEventListener("click", async function () {
-    const input = document.querySelector("input");
-    const query = input.value.trim();
 
-    if (!query) {
-        alert("Please enter a legal question.");
-        return;
+const input = document.getElementById("queryInput");
+const button = document.getElementById("searchBtn");
+const answerArea = document.getElementById("answerArea");
+
+async function searchLaw() {
+
+  const query = input.value.trim();
+
+  if (!query) {
+    input.focus();
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Researching...";
+
+  answerArea.innerHTML = `
+    <div class="answer">
+      <div class="loading">
+        <span class="dot"></span>
+        <span>LawBot is researching your question...</span>
+      </div>
+    </div>
+  `;
+
+  try {
+
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        query: query
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Something went wrong.");
     }
 
-    const button = document.querySelector("button");
-    button.disabled = true;
-    button.textContent = "Thinking...";
+    const safeAnswer = String(data.answer || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>");
 
-    let answerBox = document.getElementById("answer");
+    const verifiedBadge = data.verified
+      ? `<span class="verified">✓ Verified source</span>`
+      : "";
 
-    if (!answerBox) {
-        answerBox = document.createElement("div");
-        answerBox.id = "answer";
-        answerBox.style.margin = "30px auto";
-        answerBox.style.maxWidth = "900px";
-        answerBox.style.padding = "20px";
-        answerBox.style.background = "white";
-        answerBox.style.borderRadius = "12px";
-        answerBox.style.boxShadow = "0 4px 15px rgba(0,0,0,0.08)";
-        answerBox.style.lineHeight = "1.7";
+    const source = data.source
+      ? `
+        <div class="source">
+          Source:
+          <a href="${data.source}" target="_blank" rel="noopener">
+            View legal source ↗
+          </a>
+        </div>
+      `
+      : "";
 
-        document.querySelector("button").parentElement.parentElement.appendChild(answerBox);
-    }
+    answerArea.innerHTML = `
+      <div class="answer">
 
-    answerBox.textContent = "LawBot AI is researching your question...";
+        <div class="answer-header">
+          <div class="answer-title">🤖 LawBot AI</div>
+          ${verifiedBadge}
+        </div>
 
-    try {
-        const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                query: query
-            })
-        });
+        <div>
+          ${safeAnswer}
+        </div>
 
-        const data = await response.json();
+        ${source}
 
-        if (!response.ok) {
-            throw new Error(data.error || "Something went wrong.");
-        }
+      </div>
+    `;
 
-        answerBox.innerHTML =
-            "<strong>LawBot AI:</strong><br><br>" +
-            data.answer.replace(/\n/g, "<br>");
-    } catch (error) {
-        answerBox.textContent =
-            "Sorry, an error occurred: " + error.message;
-    }
+    answerArea.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
 
-    button.disabled = false;
-    button.textContent = "Search";
+  } catch (error) {
+
+    answerArea.innerHTML = `
+      <div class="answer">
+        <div class="answer-title">⚠️ Something went wrong</div>
+        <p style="margin-top:10px;color:#667085;">
+          ${error.message}
+        </p>
+      </div>
+    `;
+
+  }
+
+  button.disabled = false;
+  button.textContent = "Search";
+}
+
+button.addEventListener("click", searchLaw);
+
+input.addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    searchLaw();
+  }
 });
+
 </script>
+
 </body>
-      </html>
+</html>
