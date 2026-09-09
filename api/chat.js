@@ -61,10 +61,13 @@ export default async function handler(req, res) {
     // SECTION DETECTION
     // --------------------------------------------------
 
-    const sectionMatch = userQuery.match(
-      /\b(?:section|sec\.?)\s*([0-9]+[A-Za-z-]*)\b/i
-    );
-
+    const sectionMatch =
+  userQuery.match(
+    /\b(?:section|sec\.?)\s*([0-9]+[A-Za-z-]*)\b/i
+  ) ||
+  userQuery.match(
+    /\b(?:BNS|BNSS|BSA|IPC|CrPC|CPC)\s*[-:]?\s*([0-9]+[A-Za-z-]*)\b/i
+  );
     let verifiedContext = "";
     let sourceUrl = "";
     let verified = false;
