@@ -1061,7 +1061,73 @@ let provisionMappings = "";
 
       const section =
         sectionData.sections[0];
+const correspondingProvisions =
+  Array.isArray(section.correspondingProvisions)
+    ? section.correspondingProvisions
+    : [];
 
+if (correspondingProvisions.length > 0) {
+
+  provisionMappings = `
+    <div style="
+      background:#fff8e1;
+      border:1px solid #f1d47a;
+      border-radius:12px;
+      padding:16px;
+      margin-bottom:18px;
+    ">
+      <div style="
+        font-size:17px;
+        font-weight:800;
+        margin-bottom:10px;
+      ">
+        🔄 Corresponding Provision
+      </div>
+
+      ${correspondingProvisions.map(function(p) {
+        return `
+          <div style="
+            background:white;
+            border:1px solid #e4e7ec;
+            border-radius:10px;
+            padding:13px;
+          ">
+            <strong>
+              ${escapeHTML(p.act || "Indian Law")}
+            </strong>
+
+            ${
+              p.section
+                ? ` — Section ${escapeHTML(String(p.section))}`
+                : ""
+            }
+
+            ${
+              p.relation
+                ? `<div style="
+                    margin-top:6px;
+                    font-size:13px;
+                    color:#667085;
+                  ">
+                    Relationship: ${escapeHTML(p.relation)}
+                  </div>`
+                : ""
+            }
+          </div>
+        `;
+      }).join("")}
+
+      <div style="
+        margin-top:10px;
+        font-size:12px;
+        color:#667085;
+      ">
+        Mapping provided by the connected legal database.
+      </div>
+    </div>
+  `;
+
+}
 
       verifiedSection = `
 
