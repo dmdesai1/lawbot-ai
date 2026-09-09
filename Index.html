@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LawBot AI - Legal Research Assistant</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
+  color: #172033;
+}
+
+header {
+  background: #101828;
+  color: white;
+  padding: 22px;
+  text-align: center;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.tagline {
+  margin-top: 6px;
+  color: #b8c2d6;
+  font-size: 14px;
+}
+
+.hero {
+  text-align: center;
+  padding: 55px 20px 35px;
+}
+
+.hero h1 {
+  font-size: 34px;
+  margin-bottom: 12px;
+}
+
+.hero p {
+  color: #667085;
+  max-width: 600px;
+  margin: auto;
+  line-height: 1.6;
+}
+
+.search-box {
+  max-width: 700px;
+  margin: 25px auto;
+  display: flex;
+  background: white;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.search-box input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 15px;
+  font-size: 16px;
+}
+
+.search-box button {
+  border: none;
+  background: #101828;
+  color: white;
+  padding: 0 22px;
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 10px auto 50px;
+  padding: 20px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+}
+
+.card h2 {
+  margin: 10px 0;
+  font-size: 20px;
+}
+
+.card p {
+  color: #667085;
+  line-height: 1.5;
+}
+
+.card button {
+  margin-top: 18px;
+  padding: 10px 16px;
+  border: 1px solid #d0d5dd;
+  background: white;
+  border-radius: 8px;
+}
+
+.ai {
+  margin-top: 25px;
+  background: #101828;
+  color: white;
+  padding: 30px;
+  border-radius: 15px;
+}
+
+.ai p {
+  color: #cbd5e1;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.disclaimer {
+  text-align: center;
+  padding: 25px;
+  color: #667085;
+  font-size: 13px;
+}
+
+footer {
+  background: #101828;
+  color: #98a2b3;
+  text-align: center;
+  padding: 20px;
+  font-size: 13px;
+}
+
+@media(max-width:600px) {
+  .hero h1 {
+    font-size: 28px;
+  }
+
+  .search-box {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .search-box button {
+    padding: 13px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">⚖️ LawBot AI</div>
+  <div class="tagline">AI-Powered Legal Research & Legal Information</div>
+</header>
+
+<section class="hero">
+
+  <h1>Find Law. Find Judgments. Ask AI.</h1>
+
+  <p>
+    Search legal judgments, Acts and Sections and get
+    AI-assisted legal research in one place.
+  </p>
+
+  <div class="search-box">
+    <input
+      type="text"
+      placeholder="Ask a legal question or search a judgment..."
+    >
+    <button>Search</button>
+  </div>
+
+</section>
+
+<div class="container">
+
+  <div class="cards">
+
+    <div class="card">
+      <div style="font-size:32px;">🔎</div>
+      <h2>Judgment Search</h2>
+      <p>
+        Find relevant Supreme Court and High Court judgments.
+      </p>
+      <button>Search Judgments</button>
+    </div>
+
+    <div class="card">
+      <div style="font-size:32px;">📚</div>
+      <h2>Acts & Sections</h2>
+      <p>
+        Search Indian laws, Acts and individual legal sections.
+      </p>
+      <button>Search Laws</button>
+    </div>
+
+    <div class="card">
+      <div style="font-size:32px;">🌍</div>
+      <h2>International Law</h2>
+      <p>
+        Research treaties, conventions and international legal sources.
+      </p>
+      <button>Explore</button>
+    </div>
+
+  </div>
+
+  <div class="ai">
+
+    <h2>🤖 AI Legal Assistant</h2>
+
+    <p>
+      Ask a legal question in ordinary language.
+      LawBot will eventually search legal sources,
+      identify relevant authorities and explain them.
+    </p>
+
+  </div>
+
+</div>
+
+<div class="disclaimer">
+  ⚠️ LawBot AI provides legal information and research assistance.
+  It is not a substitute for professional legal advice.
+</div>
+
+<footer>
+  © 2026 LawBot AI — Legal Research Platform
+</footer>
+
+</body>
+      </html>
