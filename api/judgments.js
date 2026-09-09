@@ -13,6 +13,7 @@ export default async function handler(req, res) {
     let section = "";
     let court = "";
 
+    // Get request data
     if (req.method === "POST") {
 
       const body = req.body || {};
@@ -32,22 +33,90 @@ export default async function handler(req, res) {
     }
 
 
+    const userQuery = String(query).trim();
+    const q = userQuery.toLowerCase();
+
+
     /*
-      ------------------------------------------------
-      STEP 1
-      If a natural-language query was supplied,
-      search the legal database first.
-      ------------------------------------------------
+      -----------------------------------------------
+      AUTOMATIC LEGAL CONTEXT
+      -----------------------------------------------
     */
 
-    if (query && !act && !section) {
+    // Cheque bounce normally refers to Section 138
+    if (
+      !act &&
+      (
+        q.includes("cheque bounce") ||
+        q.includes("check bounce") ||
+        q.includes("dishonoured cheque") ||
+        q.includes("dishonored cheque") ||
+        q.includes("dishonour of cheque") ||
+        q.includes("dishonor of cheque") ||
+        q.includes("cheque dishonour") ||
+        q.includes("cheque dishonor")
+      )
+    ) {
+      act = "ni-act";
+      section = section || "138";
+    }
+
+
+    // Negotiable Instruments Act
+    if (
+      !act &&
+      (
+        q.includes("negotiable instruments act") ||
+        q.includes("negotiable instrument act") ||
+        q.includes("ni act") ||
+        q.includes("n.i. act")
+      )
+    ) {
+      act = "ni-act";
+    }
+
+
+    // Section from user's question
+    if (!section) {
+
+      const sectionMatch = q.match(
+        /\b(?:section|sec\.?)\s*(\d+[a-z]?)\b/i
+      );
+
+      if (sectionMatch) {
+        section = sectionMatch[1];
+      }
+
+    }
+
+
+    // Court
+    if (!court) {
+
+      if (q.includes("supreme court")) {
+        court = "SC";
+      }
+
+      else if (q.includes("high court")) {
+        court = "HC";
+      }
+
+    }
+
+
+    /*
+      -----------------------------------------------
+      NATURAL LANGUAGE DATABASE SEARCH
+      -----------------------------------------------
+    */
+
+    if (!act && !section && userQuery) {
 
       const searchUrl =
-        `https://indiacode.ecourtsindia.com/api/v1/search?q=${encodeURIComponent(query)}&limit=20`;
+        `https://indiacode.ecourtsindia.com/api/v1/search?q=${encodeURIComponent(userQuery)}&limit=20`;
 
       const searchResponse =
         await fetch(searchUrl);
-
 
       const searchData =
         await searchResponse.json();
@@ -64,11 +133,6 @@ export default async function handler(req, res) {
       }
 
 
-      /*
-        Find the most useful statutory provision
-        returned by the legal database.
-      */
-
       const results =
         Array.isArray(searchData.results)
           ? searchData.results
@@ -83,17 +147,10 @@ export default async function handler(req, res) {
         });
 
 
-      if (sectionResult) {
-
-        /*
-          Example ref:
-
-          ni-act/section/138
-        */
+      if (sectionResult && sectionResult.ref) {
 
         const parts =
-          String(sectionResult.ref || "")
-            .split("/");
+          String(sectionResult.ref).split("/");
 
 
         if (
@@ -108,41 +165,13 @@ export default async function handler(req, res) {
 
       }
 
-
-      /*
-        If the search found an Act but not a section,
-        remember the Act.
-      */
-
-      if (!act) {
-
-        const actResult =
-          results.find(function(result) {
-
-            return result.kind === "act";
-
-          });
-
-
-        if (actResult && actResult.ref) {
-
-          act =
-            String(actResult.ref)
-              .split("/")[0];
-
-        }
-
-      }
-
     }
 
 
     /*
-      ------------------------------------------------
-      STEP 2
-      If we now know Act + Section, retrieve the
-      actual verified judgments.
-      ------------------------------------------------
+      -----------------------------------------------
+      SEARCH VERIFIED JUDGMENTS
+      -----------------------------------------------
     */
 
     const params =
@@ -177,8 +206,7 @@ export default async function handler(req, res) {
 
 
     /*
-      Follow pagination until the database has
-      returned all available matching judgments.
+      Follow pagination
     */
 
     while (url) {
@@ -224,79 +252,276 @@ export default async function handler(req, res) {
 
 
     /*
-      ------------------------------------------------
-      STEP 3
-      Return only information actually supplied by
-      the connected legal database.
-      ------------------------------------------------
+      -----------------------------------------------
+      RELEVANCE SCORING
+      -----------------------------------------------
     */
 
-    const judgments =
-      allJudgments.map(function(judgment) {
+    const stopWords = new Set([
+      "the",
+      "and",
+      "for",
+      "where",
+      "with",
+      "from",
+      "that",
+      "this",
+      "case",
+      "cases",
+      "judgment",
+      "judgments",
+      "judgement",
+      "judgements",
+      "supreme",
+      "court",
+      "high",
+      "section",
+      "act",
+      "under",
+      "on",
+      "of",
+      "to",
+      "in",
+      "was",
+      "were",
+      "is",
+      "are",
+      "a",
+      "an"
+    ]);
 
-        return {
 
-          verified: true,
+    const queryWords =
+      q
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter(function(word) {
 
-          caseName:
-            judgment.title,
+          return (
+            word.length >= 3 &&
+            !stopWords.has(word)
+          );
 
-          court:
-            judgment.court_name,
+        });
 
-          date:
-            judgment.date,
 
-          citation:
-            judgment.citation,
+    function calculateScore(judgment) {
 
-          cnr:
-            judgment.cnr,
+      const title =
+        String(judgment.title || "").toLowerCase();
 
-          source:
-            judgment.url,
+      const ratio =
+        String(judgment.ratio_decidendi || "").toLowerCase();
 
-          precedentialValue:
-            judgment.precedential_value,
+      const applied =
+        String(judgment.applied_to_this_section || "").toLowerCase();
 
-          ratio:
-            judgment.ratio_decidendi,
+      const basis =
+        String(judgment.basis || "").toLowerCase();
 
-          appliedToSection:
-            judgment.applied_to_this_section,
+      const text =
+        `${title} ${ratio} ${applied} ${basis}`;
 
-          basis:
-            judgment.basis
 
-        };
+      let score = 0;
+
+
+      queryWords.forEach(function(word) {
+
+        // Strongest weight: case title
+        if (title.includes(word)) {
+          score += 10;
+        }
+
+        // Very important: ratio
+        if (ratio.includes(word)) {
+          score += 8;
+        }
+
+        // Section application
+        if (applied.includes(word)) {
+          score += 6;
+        }
+
+        // Database basis
+        if (basis.includes(word)) {
+          score += 4;
+        }
+
+        // General match
+        if (text.includes(word)) {
+          score += 2;
+        }
 
       });
 
 
+      /*
+        Extra relevance for notice/service questions
+      */
+
+      const noticeWords = [
+        "notice",
+        "served",
+        "service",
+        "serving",
+        "dispatch",
+        "deemed",
+        "address",
+        "refused",
+        "refusal"
+      ];
+
+
+      noticeWords.forEach(function(word) {
+
+        if (
+          q.includes(word) &&
+          text.includes(word)
+        ) {
+          score += 12;
+        }
+
+      });
+
+
+      /*
+        Extra relevance for cheque bounce
+      */
+
+      if (
+        (
+          q.includes("cheque bounce") ||
+          q.includes("check bounce") ||
+          q.includes("dishonoured cheque") ||
+          q.includes("dishonored cheque")
+        )
+        &&
+        (
+          text.includes("cheque") ||
+          text.includes("dishonour") ||
+          text.includes("dishonor")
+        )
+      ) {
+        score += 10;
+      }
+
+
+      return score;
+
+    }
+
+
     /*
-      ------------------------------------------------
-      STEP 4
-      Return search information as well.
-      ------------------------------------------------
+      -----------------------------------------------
+      SORT BY RELEVANCE
+      -----------------------------------------------
+    */
+
+    const rankedJudgments =
+      allJudgments
+        .map(function(judgment) {
+
+          return {
+            judgment: judgment,
+            score: calculateScore(judgment)
+          };
+
+        })
+        .sort(function(a, b) {
+
+          return b.score - a.score;
+
+        });
+
+
+    /*
+      -----------------------------------------------
+      RETURN TOP VERIFIED RESULTS
+      -----------------------------------------------
+    */
+
+    const topJudgments =
+      rankedJudgments
+        .slice(0, 20)
+        .map(function(item) {
+
+          const judgment =
+            item.judgment;
+
+
+          return {
+
+            verified: true,
+
+            relevanceScore:
+              item.score,
+
+            caseName:
+              judgment.title,
+
+            court:
+              judgment.court_name,
+
+            date:
+              judgment.date,
+
+            citation:
+              judgment.citation,
+
+            cnr:
+              judgment.cnr,
+
+            source:
+              judgment.url,
+
+            precedentialValue:
+              judgment.precedential_value,
+
+            ratio:
+              judgment.ratio_decidendi,
+
+            appliedToSection:
+              judgment.applied_to_this_section,
+
+            basis:
+              judgment.basis
+
+          };
+
+        });
+
+
+    /*
+      -----------------------------------------------
+      RESPONSE
+      -----------------------------------------------
     */
 
     return res.status(200).json({
 
       verified: true,
 
-      query: query || null,
+      query:
+        userQuery || null,
 
-      act: act || null,
+      act:
+        act || null,
 
-      section: section || null,
+      section:
+        section || null,
 
-      court: court || null,
+      court:
+        court || null,
 
-      total: total,
+      total:
+        total,
 
-      count: judgments.length,
+      count:
+        topJudgments.length,
 
-      judgments: judgments
+      judgments:
+        topJudgments
 
     });
 
@@ -304,7 +529,6 @@ export default async function handler(req, res) {
   } catch (error) {
 
     console.error(error);
-
 
     return res.status(500).json({
 
@@ -315,4 +539,4 @@ export default async function handler(req, res) {
 
   }
 
-          }
+}
