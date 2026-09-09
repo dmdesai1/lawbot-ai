@@ -4,9 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>LawBot AI — Legal Research Assistant</title>
-
 <style>
 :root {
   --bg:#f6f7fb;
@@ -18,20 +16,17 @@
   --accent:#b8860b;
   --accent-soft:#fff8e1;
 }
-
 * {
   box-sizing:border-box;
   margin:0;
   padding:0;
 }
-
 body {
   font-family:Inter,Arial,sans-serif;
   background:var(--bg);
   color:var(--text);
   min-height:100vh;
 }
-
 header {
   background:rgba(16,24,40,.97);
   color:white;
@@ -41,7 +36,6 @@ header {
   z-index:10;
   box-shadow:0 2px 15px rgba(0,0,0,.12);
 }
-
 .nav {
   max-width:1150px;
   margin:auto;
@@ -49,21 +43,17 @@ header {
   align-items:center;
   justify-content:space-between;
 }
-
 .logo {
   font-size:23px;
   font-weight:800;
 }
-
 .logo span {
   color:#e5b94b;
 }
-
 .nav-right {
   display:flex;
   gap:10px;
 }
-
 .nav-btn {
   background:transparent;
   color:#d0d5dd;
@@ -72,14 +62,12 @@ header {
   padding:8px 12px;
   cursor:pointer;
 }
-
 .hero {
   max-width:1050px;
   margin:auto;
   text-align:center;
   padding:75px 20px 45px;
 }
-
 .badge {
   display:inline-block;
   background:var(--accent-soft);
@@ -91,18 +79,15 @@ header {
   font-weight:700;
   margin-bottom:18px;
 }
-
 .hero h1 {
   font-size:clamp(34px,7vw,58px);
   line-height:1.08;
   letter-spacing:-1.8px;
   margin-bottom:18px;
 }
-
 .hero h1 span {
   color:#a87800;
 }
-
 .hero p {
   max-width:680px;
   margin:auto;
@@ -110,12 +95,10 @@ header {
   font-size:17px;
   line-height:1.7;
 }
-
 .search-wrap {
   max-width:850px;
   margin:32px auto 0;
 }
-
 .search-box {
   display:flex;
   background:var(--surface);
@@ -124,7 +107,6 @@ header {
   border-radius:16px;
   box-shadow:0 12px 35px rgba(16,24,40,.10);
 }
-
 .search-box input {
   flex:1;
   border:none;
@@ -134,7 +116,6 @@ header {
   font-size:16px;
   min-width:0;
 }
-
 .search-box button {
   border:none;
   background:var(--dark);
@@ -145,35 +126,29 @@ header {
   font-weight:700;
   cursor:pointer;
 }
-
 .search-box button:disabled {
   opacity:.6;
   cursor:wait;
 }
-
 .examples {
   margin-top:13px;
   color:#98a2b3;
   font-size:13px;
 }
-
 .container {
   max-width:1100px;
   margin:0 auto;
   padding:20px 20px 60px;
 }
-
 .section-title {
   font-size:25px;
   margin:20px 0 18px;
 }
-
 .cards {
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:18px;
 }
-
 .card {
   background:var(--surface);
   border:1px solid var(--border);
@@ -182,28 +157,23 @@ header {
   transition:.2s;
   box-shadow:0 4px 15px rgba(16,24,40,.04);
 }
-
 .card:hover {
   transform:translateY(-3px);
   box-shadow:0 12px 25px rgba(16,24,40,.09);
 }
-
 .card-icon {
   font-size:30px;
   margin-bottom:14px;
 }
-
 .card h2 {
   font-size:19px;
   margin-bottom:9px;
 }
-
 .card p {
   color:var(--muted);
   line-height:1.6;
   font-size:14px;
 }
-
 .trust {
   margin-top:24px;
   background:var(--dark);
@@ -211,23 +181,19 @@ header {
   border-radius:18px;
   padding:27px;
 }
-
 .trust h2 {
   margin-bottom:8px;
 }
-
 .trust p {
   color:#cbd5e1;
   line-height:1.6;
   font-size:14px;
 }
-
 .answer-area {
   max-width:1100px;
   margin:0 auto;
   padding:0 20px 40px;
 }
-
 .answer {
   background:var(--surface);
   border:1px solid var(--border);
@@ -236,7 +202,6 @@ header {
   box-shadow:0 8px 25px rgba(16,24,40,.07);
   line-height:1.75;
 }
-
 .answer-header {
   display:flex;
   justify-content:space-between;
@@ -245,12 +210,10 @@ header {
   margin-bottom:20px;
   flex-wrap:wrap;
 }
-
 .answer-title {
   font-size:20px;
   font-weight:800;
 }
-
 .verified {
   display:inline-flex;
   align-items:center;
@@ -263,7 +226,6 @@ header {
   font-size:12px;
   font-weight:700;
 }
-
 .source {
   margin-top:20px;
   padding-top:17px;
@@ -271,12 +233,10 @@ header {
   font-size:13px;
   color:var(--muted);
 }
-
 .source a {
   color:#175cd3;
   text-decoration:none;
 }
-
 .disclaimer {
   text-align:center;
   padding:20px;
@@ -284,7 +244,6 @@ header {
   font-size:12px;
   line-height:1.6;
 }
-
 footer {
   background:var(--dark);
   color:#98a2b3;
@@ -292,38 +251,29 @@ footer {
   padding:22px;
   font-size:12px;
 }
-
 @media(max-width:750px) {
-
   header {
     padding:15px;
   }
-
   .nav-right {
     display:none;
   }
-
   .hero {
     padding:55px 16px 35px;
   }
-
   .hero h1 {
     letter-spacing:-1px;
   }
-
   .search-box {
     flex-direction:column;
     gap:7px;
   }
-
   .search-box button {
     padding:14px;
   }
-
   .cards {
     grid-template-columns:1fr;
   }
-
   .answer {
     padding:20px;
   }
@@ -334,25 +284,18 @@ footer {
 <body>
 
 <header>
-
   <div class="nav">
-
     <div class="logo">
       ⚖️ Law<span>Bot</span> AI
     </div>
-
     <div class="nav-right">
       <button class="nav-btn">Judgments</button>
       <button class="nav-btn">Acts & Sections</button>
     </div>
-
   </div>
-
 </header>
 
-
 <section class="hero">
-
   <div class="badge">
     ⚖️ AI-POWERED LEGAL RESEARCH
   </div>
@@ -368,30 +311,23 @@ footer {
   </p>
 
   <div class="search-wrap">
-
     <div class="search-box">
-
       <input
         id="queryInput"
         type="text"
         placeholder="Ask a legal question..."
         autocomplete="off"
       >
-
       <button id="searchBtn">
         Search
       </button>
-
     </div>
 
     <div class="examples">
       Try: “What is Section 103 of the BNS?”
     </div>
-
   </div>
-
 </section>
-
 
 <div class="container">
 
@@ -402,88 +338,66 @@ footer {
   <div class="cards">
 
     <div class="card">
-
       <div class="card-icon">⚖️</div>
-
       <h2>
         Judgment Search
       </h2>
-
       <p>
         Find relevant Supreme Court and High Court judgments
         from the connected legal database.
       </p>
-
     </div>
 
-
     <div class="card">
-
       <div class="card-icon">📚</div>
-
       <h2>
         Acts & Sections
       </h2>
-
       <p>
         Search Indian Acts and individual legal provisions
         using connected legal sources.
       </p>
-
     </div>
 
-
     <div class="card">
-
       <div class="card-icon">🇮🇳</div>
-
       <h2>
         Indian Law
       </h2>
-
       <p>
         Research Indian statutes, provisions and reported
         legal authorities.
       </p>
-
     </div>
 
   </div>
 
-
   <div class="trust">
-
     <h2>
       🔐 Built for Reliable Legal Research
     </h2>
-
     <p>
       LawBot is being built to retrieve legal source material
       first and use AI to explain it, rather than relying only
       on the AI's memory.
     </p>
-
   </div>
 
 </div>
-
 
 <div
   class="answer-area"
   id="answerArea"
 ></div>
 
-
 <div class="disclaimer">
   ⚠️ LawBot AI provides legal information and research assistance.
   It is not a substitute for advice from a qualified lawyer.
 </div>
 
-
 <footer>
   © 2026 LawBot AI — Legal research platform Created by (D T DESAI AND SONS)
 </footer>
-
 
 <script>
 
@@ -498,1404 +412,26 @@ const answerArea =
 
 
 function escapeHTML(text) {
-
   return String(text || "")
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;")
     .replace(/'/g,"&#039;");
-
 }
 
 
-/*
-  DETECT JUDGMENT SEARCH
-*/
-
-function detectJudgmentSearch(query) {
-
-  const q =
-    query.toLowerCase();
-
-  let act = null;
-  let section = null;
-  let court = null;
-
-
-  if (
-    q.includes("negotiable instruments act") ||
-    q.includes("negotiable instrument act") ||
-    q.includes("ni act") ||
-    q.includes("n.i. act") ||
-    q.includes("cheque bounce") ||
-    q.includes("check bounce") ||
-    q.includes("dishonoured cheque") ||
-    q.includes("dishonored cheque")
-  ) {
-
-    act = "ni-act";
-
-  }
-
-
-  const sectionMatch =
-    q.match(
-      /\b(?:section|sec\.?)\s*(\d+[a-z]?)\b/i
-    );
-
-
-  if (sectionMatch) {
-
-    section =
-      sectionMatch[1];
-
-  }
-
-
-  if (q.includes("supreme court")) {
-
-    court = "SC";
-
-  } else if (q.includes("high court")) {
-
-    court = "HC";
-
-  }
-
-
-  const wantsJudgments =
-    q.includes("judgment") ||
-    q.includes("judgement") ||
-    q.includes("case") ||
-    q.includes("cases") ||
-    q.includes("precedent") ||
-    q.includes("ruling") ||
-    q.includes("decision") ||
-    q.includes("supreme court") ||
-    q.includes("high court") ||
-    q.includes("cheque bounce") ||
-    q.includes("check bounce") ||
-    q.includes("notice was not properly served") ||
-    q.includes("notice not served");
-
-
-  if (wantsJudgments) {
-
-    return {
-      query:query,
-      act:act,
-      section:section,
-      court:court
-    };
-
-  }
-
-
-  return null;
-
+function formatAnswer(text) {
+  return String(text || "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+    .replace(/^### (.*)$/gm,"<h3>$1</h3>")
+    .replace(/^## (.*)$/gm,"<h2>$1</h2>")
+    .replace(/\n/g,"<br>");
 }
 
-
-/*
-  SEARCH VERIFIED JUDGMENTS
-*/
-
-async function searchJudgments(search) {
-
-  const response =
-    await fetch("/api/judgments", {
-
-      method:"POST",
-
-      headers:{
-        "Content-Type":"application/json"
-      },
-
-      body:JSON.stringify(search)
-
-    });
-
-
-  const data =
-    await response.json();
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      data.error ||
-      "Judgment search failed"
-    );
-
-  }
-
-
-  return data;
-
-}
-
-
-/*
-  VIEW ALL JUDGMENTS
-*/
-
-function addViewAllHandler() {
-
-  const viewAllButton =
-    document.getElementById("viewAllJudgments");
-
-  if (viewAllButton) {
-
-    viewAllButton.addEventListener(
-      "click",
-      function() {
-
-        const hiddenJudgments =
-          answerArea.querySelectorAll(
-            'div[data-judgment-hidden="true"]'
-          );
-
-        hiddenJudgments.forEach(
-          function(card) {
-
-            card.style.display = "";
-
-            card.removeAttribute(
-              "data-judgment-hidden"
-            );
-
-          }
-        );
-
-        viewAllButton.style.display =
-          "none";
-
-      }
-    );
-
-  }
-
-}
-
-
-/*
-  DISPLAY JUDGMENTS
-*/
-
-function showJudgments(data,search) {
-
-  if (
-    !data.judgments ||
-    data.judgments.length === 0
-  ) {
-
-    answerArea.innerHTML = `
-
-      <div class="answer">
-
-        <div class="answer-header">
-
-          <div>
-
-            <div class="answer-title">
-              ⚖️ LawBot AI
-            </div>
-
-            <div style="
-              font-size:13px;
-              color:#667085;
-              margin-top:4px;
-            ">
-              Verified Judgment Search
-            </div>
-
-          </div>
-
-          <span
-            class="verified"
-            style="
-              background:#fff7ed;
-              color:#c2410c;
-              border-color:#fed7aa;
-            "
-          >
-            ⚠️ No Verified Judgment
-          </span>
-
-        </div>
-
-
-        <div style="
-          background:#f8fafc;
-          border:1px solid #e4e7ec;
-          border-radius:12px;
-          padding:20px;
-          font-size:15px;
-        ">
-
-          No matching judgment was found in the
-          connected legal database.
-
-          <br><br>
-
-          LawBot will not invent a case citation.
-
-        </div>
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  const cards =
-    data.judgments.map(
-      function(j,index) {
-
-        const caseName =
-          escapeHTML(
-            j.caseName ||
-            "Unnamed judgment"
-          );
-
-        const court =
-          escapeHTML(
-            j.court ||
-            "Court not specified"
-          );
-
-        const date =
-          escapeHTML(
-            j.date ||
-            "Date unavailable"
-          );
-
-        const citation =
-          escapeHTML(
-            j.citation ||
-            "Citation unavailable"
-          );
-
-        const cnr =
-          escapeHTML(
-            j.cnr ||
-            ""
-          );
-
-        const source =
-          escapeHTML(
-            j.source ||
-            "#"
-          );
-
-
-        return `
-
-          <div
-            class="judgment-card"
-            data-judgment-hidden="${
-              index >= 3 ? "true" : "false"
-            }"
-            style="
-              ${
-                index >= 3
-                  ? "display:none;"
-                  : ""
-              }
-              border:1px solid #e4e7ec;
-              border-radius:14px;
-              padding:18px;
-              margin-bottom:14px;
-              background:white;
-              box-shadow:0 2px 8px rgba(16,24,40,.05);
-            "
-          >
-
-            <div style="
-              display:flex;
-              justify-content:space-between;
-              align-items:center;
-              gap:10px;
-              flex-wrap:wrap;
-              margin-bottom:12px;
-            ">
-
-              <span class="verified">
-                ✓ Verified Judgment
-              </span>
-
-              <span style="
-                font-size:12px;
-                color:#667085;
-              ">
-                ${date}
-              </span>
-
-            </div>
-
-
-            <div style="
-              font-size:18px;
-              font-weight:700;
-              line-height:1.4;
-              color:#101828;
-              margin-bottom:9px;
-            ">
-              ${caseName}
-            </div>
-
-
-            <div style="
-              color:#475467;
-              font-size:14px;
-              margin-bottom:7px;
-            ">
-              🏛️ ${court}
-            </div>
-
-
-            <div style="
-              color:#475467;
-              font-size:14px;
-              margin-bottom:7px;
-            ">
-              📚 ${citation}
-            </div>
-
-
-            ${
-              cnr
-                ? `
-                  <div style="
-                    color:#667085;
-                    font-size:12px;
-                    margin-top:8px;
-                  ">
-                    CNR: ${cnr}
-                  </div>
-                `
-                : ""
-            }
-
-
-            <div style="
-              margin-top:15px;
-            ">
-
-              <a
-                href="${source}"
-                target="_blank"
-                rel="noopener noreferrer"
-                style="
-                  display:inline-block;
-                  background:#101828;
-                  color:white;
-                  text-decoration:none;
-                  padding:10px 14px;
-                  border-radius:9px;
-                  font-size:13px;
-                  font-weight:600;
-                "
-              >
-                View Original Judgment ↗
-              </a>
-
-            </div>
-
-          </div>
-
-        `;
-
-      }
-    ).join("");
-
-
-  answerArea.innerHTML = `
-
-    <div class="answer">
-
-      <div class="answer-header">
-
-        <div>
-
-          <div class="answer-title">
-            ⚖️ LawBot AI
-          </div>
-
-          <div style="
-            font-size:13px;
-            color:#667085;
-            margin-top:4px;
-          ">
-            Verified Judgment Search
-          </div>
-
-        </div>
-
-
-        <span class="verified">
-          ✓ ${data.count} Verified Results
-        </span>
-
-      </div>
-
-
-      <div style="
-        background:#f8fafc;
-        border:1px solid #e4e7ec;
-        border-radius:12px;
-        padding:15px;
-        margin-bottom:18px;
-        font-size:14px;
-        color:#475467;
-      ">
-
-        ${
-          search.section
-            ? `
-              <strong>
-                Section ${escapeHTML(
-                  search.section
-                )}
-              </strong>
-              <br>
-            `
-            : ""
-        }
-
-        Judgments found in the connected
-        legal database.
-
-      </div>
-
-
-      ${cards}
-
-
-      ${
-        data.judgments.length > 3
-          ? `
-            <button
-              id="viewAllJudgments"
-              style="
-                width:100%;
-                border:1px solid #d0d5dd;
-                background:white;
-                color:#101828;
-                padding:11px 15px;
-                border-radius:9px;
-                cursor:pointer;
-                font-weight:700;
-                margin-bottom:14px;
-              "
-            >
-              👁️ View All ${data.judgments.length} Judgments
-            </button>
-          `
-          : ""
-      }
-
-
-      <button
-        id="newSearch"
-        style="
-          border:none;
-          background:#101828;
-          color:white;
-          padding:10px 15px;
-          border-radius:9px;
-          cursor:pointer;
-          font-weight:600;
-        "
-      >
-        🔎 New Search
-      </button>
-
-    </div>
-
-  `;
-
-
-  document
-    .getElementById("newSearch")
-    .addEventListener(
-      "click",
-      newSearch
-    );
-
-
-  addViewAllHandler();
-
-
-  answerArea.scrollIntoView({
-    behavior:"smooth",
-    block:"start"
-  });
-
-}
-
-
-/*
-  NORMAL AI + VERIFIED SECTION + JUDGMENTS
-*/
-
-async function showAIAnswer(query) {
-
-  try {
-
-    let sectionData = null;
-
-
-    /*
-      GET VERIFIED SECTION
-    */
-
-    const sectionResponse =
-      await fetch(
-        "/api/sections?q=" +
-        encodeURIComponent(query)
-      );
-
-
-    if (sectionResponse.ok) {
-
-      sectionData =
-        await sectionResponse.json();
-
-    }
-
-
-    /*
-      ASK GEMINI
-    */
-
-    const response =
-      await fetch("/api/chat", {
-
-        method:"POST",
-
-        headers:{
-          "Content-Type":"application/json"
-        },
-
-        body:JSON.stringify({
-          query:query
-        })
-
-      });
-
-
-    const data =
-      await response.json();
-
-
-    if (!response.ok) {
-
-      throw new Error(
-        data.error ||
-        "Something went wrong."
-      );
-
-    }
-
-
-    /*
-      FORMAT AI ANSWER
-    */
-
-    const rawAnswer =
-      String(data.answer || "");
-
-
-    const safeAnswer =
-      rawAnswer
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(
-          /\*\*(.*?)\*\*/g,
-          "<strong>$1</strong>"
-        )
-        .replace(
-          /^### (.*)$/gm,
-          "<h3>$1</h3>"
-        )
-        .replace(
-          /^## (.*)$/gm,
-          "<h2>$1</h2>"
-        )
-        .replace(
-          /\n/g,
-          "<br>"
-        );
-
-
-    /*
-      RESULT VARIABLES
-    */
-
-    let verifiedSection = "";
-
-    let connectedJudgments = "";
-
-    let provisionMappings = "";
-
-
-    /*
-      BUILD VERIFIED SECTION
-    */
-
-    if (
-      sectionData &&
-      sectionData.verified &&
-      sectionData.sections &&
-      sectionData.sections.length > 0
-    ) {
-
-      const section =
-        sectionData.sections[0];
-
-
-      /*
-        CORRESPONDING PROVISIONS
-      */
-
-      const correspondingProvisions =
-        Array.isArray(
-          section.correspondingProvisions
-        )
-          ? section.correspondingProvisions
-          : [];
-
-
-      if (
-        correspondingProvisions.length > 0
-      ) {
-
-        provisionMappings = `
-
-          <div style="
-            background:#fff8e1;
-            border:1px solid #f1d47a;
-            border-radius:12px;
-            padding:16px;
-            margin-bottom:18px;
-          ">
-
-            <div style="
-              font-size:17px;
-              font-weight:800;
-              margin-bottom:10px;
-            ">
-              🔄 Corresponding Provision
-            </div>
-
-
-            ${
-              correspondingProvisions
-                .map(
-                  function(p) {
-
-                    return `
-
-                      <div style="
-                        background:white;
-                        border:1px solid #e4e7ec;
-                        border-radius:10px;
-                        padding:13px;
-                        margin-top:10px;
-                      ">
-
-                        <strong>
-                          ${escapeHTML(
-                            p.act ||
-                            "Indian Law"
-                          )}
-                        </strong>
-
-
-                        ${
-                          p.section
-                            ? `
-                              — Section
-                              ${escapeHTML(
-                                String(
-                                  p.section
-                                )
-                              )}
-                            `
-                            : ""
-                        }
-
-
-                        ${
-                          p.relation
-                            ? `
-                              <div style="
-                                margin-top:6px;
-                                font-size:13px;
-                                color:#667085;
-                              ">
-                                Relationship:
-                                ${escapeHTML(
-                                  p.relation
-                                )}
-                              </div>
-                            `
-                            : ""
-                        }
-
-                      </div>
-
-                    `;
-
-                  }
-                )
-                .join("")
-            }
-
-
-            <div style="
-              margin-top:10px;
-              font-size:12px;
-              color:#667085;
-            ">
-              Mapping provided by the connected legal database.
-            </div>
-
-          </div>
-
-        `;
-
-      }
-
-
-      /*
-        VERIFIED PROVISION CARD
-      */
-
-      verifiedSection = `
-
-        <div style="
-          background:#f8fafc;
-          border:1px solid #dbe4ec;
-          border-radius:12px;
-          padding:18px;
-          margin-bottom:18px;
-        ">
-
-          <div style="
-            font-size:16px;
-            font-weight:700;
-            margin-bottom:8px;
-          ">
-            📜 Verified Legal Provision
-          </div>
-
-
-          <div style="
-            font-size:14px;
-            color:#475569;
-            margin-bottom:12px;
-          ">
-
-            <strong>
-              ${escapeHTML(
-                section.act ||
-                "Indian Law"
-              )}
-            </strong>
-
-            ${
-              section.section
-                ? `
-                  — Section
-                  ${escapeHTML(
-                    String(
-                      section.section
-                    )
-                  )}
-                `
-                : ""
-            }
-
-          </div>
-
-
-          ${
-            section.heading
-              ? `
-                <div style="
-                  font-weight:700;
-                  margin-bottom:10px;
-                ">
-                  ${escapeHTML(
-                    section.heading
-                  )}
-                </div>
-              `
-              : ""
-          }
-
-
-          ${
-            section.text
-              ? `
-                <div style="
-                  background:white;
-                  border:1px solid #e2e8f0;
-                  border-radius:10px;
-                  padding:15px;
-                  font-size:14px;
-                  line-height:1.7;
-                ">
-                  ${escapeHTML(
-                    section.text
-                  )}
-                </div>
-              `
-              : ""
-          }
-
-
-          ${
-            section.url
-              ? `
-                <div style="
-                  margin-top:12px;
-                ">
-                  <a
-                    href="${escapeHTML(
-                      section.url
-                    )}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style="
-                      font-weight:600;
-                      text-decoration:none;
-                    "
-                  >
-                    View Original Legal Source ↗
-                  </a>
-                </div>
-              `
-              : ""
-          }
-
-
-          <div style="
-            margin-top:12px;
-            font-size:12px;
-            color:#15803d;
-            font-weight:600;
-          ">
-            ✓ Verified from connected legal database
-          </div>
-
-        </div>
-
-      `;
-
-
-      /*
-        CONNECTED JUDGMENTS
-      */
-
-      const judgments =
-        Array.isArray(
-          section.judgments
-        )
-          ? section.judgments
-          : [];
-
-
-      if (judgments.length > 0) {
-
-        const judgmentCards =
-          judgments.map(
-            function(j,index) {
-
-              const caseName =
-                escapeHTML(
-                  j.caseName ||
-                  "Unnamed judgment"
-                );
-
-              const court =
-                escapeHTML(
-                  j.court ||
-                  j.courtLevel ||
-                  "Court not specified"
-                );
-
-              const date =
-                escapeHTML(
-                  j.date ||
-                  "Date unavailable"
-                );
-
-              const citation =
-                escapeHTML(
-                  j.citation ||
-                  "Citation unavailable"
-                );
-
-              const cnr =
-                escapeHTML(
-                  j.cnr ||
-                  ""
-                );
-
-              const ratio =
-                escapeHTML(
-                  j.ratio ||
-                  ""
-                );
-
-              const source =
-                escapeHTML(
-                  j.source ||
-                  "#"
-                );
-
-
-              return `
-
-                <div
-                  class="judgment-card"
-                  data-judgment-hidden="${
-                    index >= 3
-                      ? "true"
-                      : "false"
-                  }"
-                  style="
-                    ${
-                      index >= 3
-                        ? "display:none;"
-                        : ""
-                    }
-                    border:1px solid #e4e7ec;
-                    border-radius:14px;
-                    padding:18px;
-                    margin-bottom:14px;
-                    background:white;
-                    box-shadow:0 2px 8px rgba(16,24,40,.05);
-                  "
-                >
-
-                  <div style="
-                    display:flex;
-                    justify-content:space-between;
-                    align-items:center;
-                    gap:10px;
-                    flex-wrap:wrap;
-                    margin-bottom:12px;
-                  ">
-
-                    <span class="verified">
-                      ✓ Verified Judgment
-                    </span>
-
-                    <span style="
-                      font-size:12px;
-                      color:#667085;
-                    ">
-                      ${date}
-                    </span>
-
-                  </div>
-
-
-                  <div style="
-                    font-size:17px;
-                    font-weight:700;
-                    line-height:1.4;
-                    color:#101828;
-                    margin-bottom:9px;
-                  ">
-                    ${caseName}
-                  </div>
-
-
-                  <div style="
-                    color:#475467;
-                    font-size:14px;
-                    margin-bottom:7px;
-                  ">
-                    🏛️ ${court}
-                  </div>
-
-
-                  <div style="
-                    color:#475467;
-                    font-size:14px;
-                    margin-bottom:7px;
-                  ">
-                    📚 ${citation}
-                  </div>
-
-
-                  ${
-                    ratio
-                      ? `
-                        <div style="
-                          margin-top:12px;
-                          padding:12px;
-                          background:#f8fafc;
-                          border-radius:9px;
-                          font-size:13px;
-                          line-height:1.6;
-                          color:#475467;
-                        ">
-
-                          <strong>
-                            Ratio / Holding:
-                          </strong>
-
-                          <br>
-
-                          ${ratio}
-
-                        </div>
-                      `
-                      : ""
-                  }
-
-
-                  ${
-                    cnr
-                      ? `
-                        <div style="
-                          color:#667085;
-                          font-size:12px;
-                          margin-top:9px;
-                        ">
-                          CNR: ${cnr}
-                        </div>
-                      `
-                      : ""
-                  }
-
-
-                  <div style="
-                    margin-top:15px;
-                  ">
-
-                    <a
-                      href="${source}"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style="
-                        display:inline-block;
-                        background:#101828;
-                        color:white;
-                        text-decoration:none;
-                        padding:10px 14px;
-                        border-radius:9px;
-                        font-size:13px;
-                        font-weight:600;
-                      "
-                    >
-                      View Original Judgment ↗
-                    </a>
-
-                  </div>
-
-                </div>
-
-              `;
-
-            }
-          ).join("");
-
-
-        connectedJudgments = `
-
-          <div style="
-            margin-bottom:18px;
-          ">
-
-            <div style="
-              display:flex;
-              justify-content:space-between;
-              align-items:center;
-              gap:10px;
-              flex-wrap:wrap;
-              margin-bottom:12px;
-            ">
-
-              <div style="
-                font-size:18px;
-                font-weight:800;
-              ">
-                ⚖️ Verified Judgments
-              </div>
-
-              <span class="verified">
-                ✓ ${judgments.length} Connected
-              </span>
-
-            </div>
-
-
-            <div style="
-              font-size:13px;
-              color:#667085;
-              margin-bottom:15px;
-            ">
-              Judgments connected to this verified legal
-              provision in the legal database.
-            </div>
-
-
-            ${judgmentCards}
-
-
-            ${
-              judgments.length > 3
-                ? `
-                  <button
-                    id="viewAllJudgments"
-                    style="
-                      width:100%;
-                      border:1px solid #d0d5dd;
-                      background:white;
-                      color:#101828;
-                      padding:11px 15px;
-                      border-radius:9px;
-                      cursor:pointer;
-                      font-weight:700;
-                      margin-bottom:14px;
-                    "
-                  >
-                    👁️ View All
-                    ${judgments.length}
-                    Judgments
-                  </button>
-                `
-                : ""
-            }
-
-          </div>
-
-        `;
-
-      } else {
-
-        connectedJudgments = `
-
-          <div style="
-            background:#f8fafc;
-            border:1px solid #e4e7ec;
-            border-radius:12px;
-            padding:15px;
-            margin-bottom:18px;
-            font-size:13px;
-            color:#667085;
-          ">
-            ⚖️ No connected verified judgments were
-            returned for this provision.
-          </div>
-
-        `;
-
-      }
-
-    }
-
-
-    /*
-      VERIFICATION BADGE
-    */
-
-    const verifiedBadge =
-      data.verified
-        ? `
-          <span class="verified">
-            ✓ Verified Source
-          </span>
-        `
-        : `
-          <span
-            class="verified"
-            style="
-              background:#fff7ed;
-              color:#c2410c;
-              border-color:#fed7aa;
-            "
-          >
-            AI Answer
-          </span>
-        `;
-
-
-    /*
-      CHAT SOURCE
-    */
-
-    const source =
-      data.source
-        ? `
-          <div class="source">
-
-            <span>
-              📗 Source
-            </span>
-
-            <a
-              href="${escapeHTML(
-                data.source
-              )}"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View Original Legal Source ↗
-            </a>
-
-          </div>
-        `
-        : "";
-
-
-    /*
-      DISPLAY RESULT
-    */
-
-    answerArea.innerHTML = `
-
-      <div class="answer">
-
-        <div class="answer-header">
-
-          <div>
-
-            <div class="answer-title">
-              ⚖️ LawBot AI
-            </div>
-
-            <div style="
-              font-size:13px;
-              color:#667085;
-              margin-top:4px;
-            ">
-              Legal Research Result
-            </div>
-
-          </div>
-
-          ${verifiedBadge}
-
-        </div>
-
-
-        ${verifiedSection}
-
-        ${provisionMappings}
-
-        ${connectedJudgments}
-
-
-        <div style="
-          background:#f8fafc;
-          border:1px solid #e4e7ec;
-          border-radius:12px;
-          padding:20px;
-          font-size:15px;
-          line-height:1.7;
-        ">
-          ${safeAnswer}
-        </div>
-
-
-        ${source}
-
-
-        <div style="
-          display:flex;
-          gap:10px;
-          margin-top:18px;
-          flex-wrap:wrap;
-        ">
-
-          <button
-            id="copyAnswer"
-            style="
-              border:1px solid #d0d5dd;
-              background:white;
-              padding:9px 14px;
-              border-radius:9px;
-              cursor:pointer;
-              font-weight:600;
-            "
-          >
-            📋 Copy Answer
-          </button>
-
-
-          <button
-            id="newSearch"
-            style="
-              border:none;
-              background:#101828;
-              color:white;
-              padding:9px 14px;
-              border-radius:9px;
-              cursor:pointer;
-              font-weight:600;
-            "
-          >
-            🔵 New Search
-          </button>
-
-        </div>
-
-      </div>
-
-    `;
-
-
-    /*
-      COPY
-    */
-
-    document
-      .getElementById("copyAnswer")
-      .addEventListener(
-        "click",
-        async function() {
-
-          try {
-
-            await navigator.clipboard.writeText(
-              rawAnswer
-            );
-
-            this.textContent =
-              "✓ Copied";
-
-            setTimeout(
-              () => {
-
-                this.textContent =
-                  "📋 Copy Answer";
-
-              },
-              1500
-            );
-
-          } catch {
-
-            this.textContent =
-              "Copy unavailable";
-
-          }
-
-        }
-      );
 
 /*
   AI LEGAL RESEARCH RESULT
@@ -1927,7 +463,6 @@ function showResearchAnswer(data) {
         ? section.correspondingProvisions
         : [];
 
-
     researchSections += `
 
       <div style="
@@ -1951,6 +486,7 @@ function showResearchAnswer(data) {
           color:#475569;
           margin-bottom:8px;
         ">
+
           <strong>
             ${escapeHTML(section.act || "Indian Law")}
           </strong>
@@ -1962,6 +498,7 @@ function showResearchAnswer(data) {
                 )}`
               : ""
           }
+
         </div>
 
         ${
@@ -2011,12 +548,13 @@ function showResearchAnswer(data) {
 
                 ${
                   mappings.map(function(mapping) {
-
                     return `
+
                       <div style="
                         margin-top:8px;
                         font-size:13px;
                       ">
+
                         <strong>
                           ${escapeHTML(
                             mapping.act ||
@@ -2045,9 +583,10 @@ function showResearchAnswer(data) {
                             `
                             : ""
                         }
-                      </div>
-                    `;
 
+                      </div>
+
+                    `;
                   }).join("")
                 }
 
@@ -2062,6 +601,7 @@ function showResearchAnswer(data) {
               <div style="
                 margin-top:12px;
               ">
+
                 <a
                   href="${escapeHTML(section.url)}"
                   target="_blank"
@@ -2073,6 +613,7 @@ function showResearchAnswer(data) {
                 >
                   View Original Legal Source ↗
                 </a>
+
               </div>
             `
             : ""
@@ -2090,7 +631,6 @@ function showResearchAnswer(data) {
       </div>
 
     `;
-
   });
 
 
@@ -2100,7 +640,7 @@ function showResearchAnswer(data) {
 
   let researchJudgments = "";
 
-  judgments.slice(0, 10).forEach(function(judgment, index) {
+  judgments.slice(0,10).forEach(function(judgment,index) {
 
     researchJudgments += `
 
@@ -2147,6 +687,7 @@ function showResearchAnswer(data) {
 
         </div>
 
+
         <div style="
           font-size:17px;
           font-weight:700;
@@ -2159,6 +700,7 @@ function showResearchAnswer(data) {
           )}
         </div>
 
+
         <div style="
           font-size:13px;
           color:#475467;
@@ -2169,6 +711,7 @@ function showResearchAnswer(data) {
             "Court not specified"
           )}
         </div>
+
 
         ${
           judgment.citation
@@ -2186,6 +729,7 @@ function showResearchAnswer(data) {
             : ""
         }
 
+
         ${
           judgment.facts
             ? `
@@ -2200,6 +744,7 @@ function showResearchAnswer(data) {
             `
             : ""
         }
+
 
         ${
           judgment.issues
@@ -2216,6 +761,7 @@ function showResearchAnswer(data) {
             : ""
         }
 
+
         ${
           judgment.decision
             ? `
@@ -2231,6 +777,7 @@ function showResearchAnswer(data) {
             : ""
         }
 
+
         ${
           judgment.ratio
             ? `
@@ -2242,6 +789,7 @@ function showResearchAnswer(data) {
                 font-size:13px;
                 line-height:1.6;
               ">
+
                 <strong>
                   Ratio / Legal Principle:
                 </strong>
@@ -2249,10 +797,12 @@ function showResearchAnswer(data) {
                 <br>
 
                 ${escapeHTML(judgment.ratio)}
+
               </div>
             `
             : ""
         }
+
 
         ${
           judgment.source
@@ -2260,6 +810,7 @@ function showResearchAnswer(data) {
               <div style="
                 margin-top:13px;
               ">
+
                 <a
                   href="${escapeHTML(judgment.source)}"
                   target="_blank"
@@ -2277,6 +828,7 @@ function showResearchAnswer(data) {
                 >
                   View Original Judgment ↗
                 </a>
+
               </div>
             `
             : ""
@@ -2285,13 +837,13 @@ function showResearchAnswer(data) {
       </div>
 
     `;
-
   });
 
 
   const viewAllResearchJudgments =
     judgments.length > 3
       ? `
+
         <button
           id="viewAllResearchJudgments"
           style="
@@ -2311,6 +863,7 @@ function showResearchAnswer(data) {
             10
           )} Research Judgments
         </button>
+
       `
       : "";
 
@@ -2351,6 +904,7 @@ function showResearchAnswer(data) {
       ${
         researchSections
           ? `
+
             <div style="
               font-size:19px;
               font-weight:800;
@@ -2360,6 +914,7 @@ function showResearchAnswer(data) {
             </div>
 
             ${researchSections}
+
           `
           : ""
       }
@@ -2368,6 +923,7 @@ function showResearchAnswer(data) {
       ${
         researchJudgments
           ? `
+
             <div style="
               font-size:19px;
               font-weight:800;
@@ -2388,8 +944,10 @@ function showResearchAnswer(data) {
             ${researchJudgments}
 
             ${viewAllResearchJudgments}
+
           `
           : `
+
             <div style="
               background:#f8fafc;
               border:1px solid #e4e7ec;
@@ -2402,6 +960,7 @@ function showResearchAnswer(data) {
               ⚖️ No verified judgment was retrieved
               for this research query.
             </div>
+
           `
       }
 
@@ -2415,29 +974,7 @@ function showResearchAnswer(data) {
         line-height:1.75;
         margin-top:18px;
       ">
-
-        ${String(data.answer || "")
-          .replace(/&/g,"&amp;")
-          .replace(/</g,"&lt;")
-          .replace(/>/g,"&gt;")
-          .replace(
-            /\*\*(.*?)\*\*/g,
-            "<strong>$1</strong>"
-          )
-          .replace(
-            /^### (.*)$/gm,
-            "<h3>$1</h3>"
-          )
-          .replace(
-            /^## (.*)$/gm,
-            "<h2>$1</h2>"
-          )
-          .replace(
-            /\n/g,
-            "<br>"
-          )
-        }
-
+        ${formatAnswer(data.answer)}
       </div>
 
 
@@ -2505,7 +1042,6 @@ function showResearchAnswer(data) {
       "viewAllResearchJudgments"
     );
 
-
   if (viewAllButton) {
 
     viewAllButton.addEventListener(
@@ -2544,7 +1080,6 @@ function showResearchAnswer(data) {
     document.getElementById(
       "copyResearchAnswer"
     );
-
 
   if (copyButton) {
 
@@ -2595,67 +1130,6 @@ function showResearchAnswer(data) {
     block:"start"
   });
 
-  }
-    /*
-      NEW SEARCH
-    */
-
-    document
-      .getElementById("newSearch")
-      .addEventListener(
-        "click",
-        newSearch
-      );
-
-
-    /*
-      VIEW ALL
-    */
-
-    addViewAllHandler();
-
-
-    /*
-      SCROLL
-    */
-
-    answerArea.scrollIntoView({
-      behavior:"smooth",
-      block:"start"
-    });
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    answerArea.innerHTML = `
-
-      <div class="answer">
-
-        <div class="answer-title">
-          ⚠️ LawBot AI
-        </div>
-
-        <div style="
-          margin-top:15px;
-          padding:15px;
-          background:#fff7ed;
-          border:1px solid #fed7aa;
-          border-radius:10px;
-        ">
-          ${escapeHTML(
-            error.message ||
-            "Something went wrong. Please try again."
-          )}
-        </div>
-
-      </div>
-
-    `;
-
-  }
-
 }
 
 
@@ -2688,13 +1162,9 @@ async function searchLaw() {
   const query =
     input.value.trim();
 
-
   if (!query) {
-
     input.focus();
-
     return;
-
   }
 
 
@@ -2727,26 +1197,22 @@ async function searchLaw() {
 
   try {
 
-    /*
-      -----------------------------------------------
-      NEW AI LEGAL RESEARCH ENGINE
-      -----------------------------------------------
-    */
-
     const response =
-      await fetch("/api/research", {
+      await fetch(
+        "/api/research",
+        {
+          method:"POST",
 
-        method:"POST",
+          headers:{
+            "Content-Type":
+              "application/json"
+          },
 
-        headers:{
-          "Content-Type":"application/json"
-        },
-
-        body:JSON.stringify({
-          query:query
-        })
-
-      });
+          body:JSON.stringify({
+            query:query
+          })
+        }
+      );
 
 
     const data =
@@ -2786,25 +1252,29 @@ async function searchLaw() {
           border-radius:10px;
           line-height:1.6;
         ">
+
           ${escapeHTML(
             error.message ||
             "Something went wrong. Please try again."
           )}
+
         </div>
 
       </div>
 
     `;
 
+  } finally {
+
+    button.disabled = false;
+
+    button.textContent =
+      "Search";
+
   }
 
-
-  button.disabled = false;
-
-  button.textContent =
-    "Search";
-
 }
+
 
 /*
   SEARCH BUTTON
@@ -2825,9 +1295,7 @@ input.addEventListener(
   function(event) {
 
     if (event.key === "Enter") {
-
       searchLaw();
-
     }
 
   }
