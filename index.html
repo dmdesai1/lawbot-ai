@@ -1194,7 +1194,7 @@ async function showAIAnswer(query) {
       if (judgments.length > 0) {
 
         const judgmentCards =
-          judgments.map(function(j) {
+          judgments.map(function(j, index) {
 
             const caseName =
               escapeHTML(
@@ -1243,7 +1243,8 @@ async function showAIAnswer(query) {
             return `
 
               <div style="
-                border:1px solid #e4e7ec;
+  ${index >= 3 ? "display:none;" : ""}
+  border:1px solid #e4e7ec;
                 border-radius:14px;
                 padding:18px;
                 margin-bottom:14px;
@@ -1412,8 +1413,30 @@ async function showAIAnswer(query) {
 
             ${judgmentCards}
 
-          </div>
+${
+  judgments.length > 3
+    ? `
+      <button
+        id="viewAllJudgments"
+        style="
+          width:100%;
+          border:1px solid #d0d5dd;
+          background:white;
+          color:#101828;
+          padding:11px 15px;
+          border-radius:9px;
+          cursor:pointer;
+          font-weight:700;
+          margin-bottom:14px;
+        "
+      >
+        👁️ View All ${judgments.length} Judgments
+      </button>
+    `
+    : ""
+}
 
+</div>
         `;
 
       } else {
@@ -1632,7 +1655,30 @@ async function showAIAnswer(query) {
         "click",
         newSearch
       );
+const viewAllButton =
+  document.getElementById("viewAllJudgments");
 
+if (viewAllButton) {
+
+  viewAllButton.addEventListener(
+    "click",
+    function() {
+
+      const hiddenJudgments =
+        answerArea.querySelectorAll(
+          'div[style*="display:none;"]'
+        );
+
+      hiddenJudgments.forEach(function(card) {
+        card.style.display = "";
+      });
+
+      viewAllButton.style.display = "none";
+
+    }
+  );
+
+}
 
     /*
       SCROLL
