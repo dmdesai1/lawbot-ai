@@ -1,10 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LawBot AI — Legal Research Assistant</title>
+
 <style>
 :root {
   --bg:#f6f7fb;
@@ -16,17 +16,20 @@
   --accent:#b8860b;
   --accent-soft:#fff8e1;
 }
+
 * {
   box-sizing:border-box;
   margin:0;
   padding:0;
 }
+
 body {
   font-family:Inter,Arial,sans-serif;
   background:var(--bg);
   color:var(--text);
   min-height:100vh;
 }
+
 header {
   background:rgba(16,24,40,.97);
   color:white;
@@ -36,6 +39,7 @@ header {
   z-index:10;
   box-shadow:0 2px 15px rgba(0,0,0,.12);
 }
+
 .nav {
   max-width:1150px;
   margin:auto;
@@ -43,17 +47,21 @@ header {
   align-items:center;
   justify-content:space-between;
 }
+
 .logo {
   font-size:23px;
   font-weight:800;
 }
+
 .logo span {
   color:#e5b94b;
 }
+
 .nav-right {
   display:flex;
   gap:10px;
 }
+
 .nav-btn {
   background:transparent;
   color:#d0d5dd;
@@ -62,12 +70,14 @@ header {
   padding:8px 12px;
   cursor:pointer;
 }
+
 .hero {
   max-width:1050px;
   margin:auto;
   text-align:center;
   padding:75px 20px 45px;
 }
+
 .badge {
   display:inline-block;
   background:var(--accent-soft);
@@ -79,15 +89,18 @@ header {
   font-weight:700;
   margin-bottom:18px;
 }
+
 .hero h1 {
   font-size:clamp(34px,7vw,58px);
   line-height:1.08;
   letter-spacing:-1.8px;
   margin-bottom:18px;
 }
+
 .hero h1 span {
   color:#a87800;
 }
+
 .hero p {
   max-width:680px;
   margin:auto;
@@ -95,10 +108,12 @@ header {
   font-size:17px;
   line-height:1.7;
 }
+
 .search-wrap {
   max-width:850px;
   margin:32px auto 0;
 }
+
 .search-box {
   display:flex;
   background:var(--surface);
@@ -107,6 +122,7 @@ header {
   border-radius:16px;
   box-shadow:0 12px 35px rgba(16,24,40,.10);
 }
+
 .search-box input {
   flex:1;
   border:none;
@@ -116,6 +132,7 @@ header {
   font-size:16px;
   min-width:0;
 }
+
 .search-box button {
   border:none;
   background:var(--dark);
@@ -126,29 +143,35 @@ header {
   font-weight:700;
   cursor:pointer;
 }
+
 .search-box button:disabled {
   opacity:.6;
   cursor:wait;
 }
+
 .examples {
   margin-top:13px;
   color:#98a2b3;
   font-size:13px;
 }
+
 .container {
   max-width:1100px;
   margin:0 auto;
   padding:20px 20px 60px;
 }
+
 .section-title {
   font-size:25px;
   margin:20px 0 18px;
 }
+
 .cards {
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:18px;
 }
+
 .card {
   background:var(--surface);
   border:1px solid var(--border);
@@ -157,23 +180,28 @@ header {
   transition:.2s;
   box-shadow:0 4px 15px rgba(16,24,40,.04);
 }
+
 .card:hover {
   transform:translateY(-3px);
   box-shadow:0 12px 25px rgba(16,24,40,.09);
 }
+
 .card-icon {
   font-size:30px;
   margin-bottom:14px;
 }
+
 .card h2 {
   font-size:19px;
   margin-bottom:9px;
 }
+
 .card p {
   color:var(--muted);
   line-height:1.6;
   font-size:14px;
 }
+
 .trust {
   margin-top:24px;
   background:var(--dark);
@@ -181,19 +209,23 @@ header {
   border-radius:18px;
   padding:27px;
 }
+
 .trust h2 {
   margin-bottom:8px;
 }
+
 .trust p {
   color:#cbd5e1;
   line-height:1.6;
   font-size:14px;
 }
+
 .answer-area {
   max-width:1100px;
   margin:0 auto;
   padding:0 20px 40px;
 }
+
 .answer {
   background:var(--surface);
   border:1px solid var(--border);
@@ -202,6 +234,7 @@ header {
   box-shadow:0 8px 25px rgba(16,24,40,.07);
   line-height:1.75;
 }
+
 .answer-header {
   display:flex;
   justify-content:space-between;
@@ -210,10 +243,12 @@ header {
   margin-bottom:20px;
   flex-wrap:wrap;
 }
+
 .answer-title {
   font-size:20px;
   font-weight:800;
 }
+
 .verified {
   display:inline-flex;
   align-items:center;
@@ -226,6 +261,7 @@ header {
   font-size:12px;
   font-weight:700;
 }
+
 .source {
   margin-top:20px;
   padding-top:17px;
@@ -233,10 +269,12 @@ header {
   font-size:13px;
   color:var(--muted);
 }
+
 .source a {
   color:#175cd3;
   text-decoration:none;
 }
+
 .disclaimer {
   text-align:center;
   padding:20px;
@@ -244,6 +282,7 @@ header {
   font-size:12px;
   line-height:1.6;
 }
+
 footer {
   background:var(--dark);
   color:#98a2b3;
@@ -251,29 +290,38 @@ footer {
   padding:22px;
   font-size:12px;
 }
+
 @media(max-width:750px) {
+
   header {
     padding:15px;
   }
+
   .nav-right {
     display:none;
   }
+
   .hero {
     padding:55px 16px 35px;
   }
+
   .hero h1 {
     letter-spacing:-1px;
   }
+
   .search-box {
     flex-direction:column;
     gap:7px;
   }
+
   .search-box button {
     padding:14px;
   }
+
   .cards {
     grid-template-columns:1fr;
   }
+
   .answer {
     padding:20px;
   }
@@ -284,18 +332,25 @@ footer {
 <body>
 
 <header>
+
   <div class="nav">
+
     <div class="logo">
       ⚖️ Law<span>Bot</span> AI
     </div>
+
     <div class="nav-right">
       <button class="nav-btn">Judgments</button>
       <button class="nav-btn">Acts & Sections</button>
     </div>
+
   </div>
+
 </header>
 
+
 <section class="hero">
+
   <div class="badge">
     ⚖️ AI-POWERED LEGAL RESEARCH
   </div>
@@ -311,23 +366,30 @@ footer {
   </p>
 
   <div class="search-wrap">
+
     <div class="search-box">
+
       <input
         id="queryInput"
         type="text"
         placeholder="Ask a legal question..."
         autocomplete="off"
       >
+
       <button id="searchBtn">
         Search
       </button>
+
     </div>
 
     <div class="examples">
       Try: “What is Section 103 of the BNS?”
     </div>
+
   </div>
+
 </section>
+
 
 <div class="container">
 
@@ -338,66 +400,96 @@ footer {
   <div class="cards">
 
     <div class="card">
-      <div class="card-icon">⚖️</div>
+
+      <div class="card-icon">
+        ⚖️
+      </div>
+
       <h2>
         Judgment Search
       </h2>
+
       <p>
         Find relevant Supreme Court and High Court judgments
         from the connected legal database.
       </p>
+
     </div>
 
+
     <div class="card">
-      <div class="card-icon">📚</div>
+
+      <div class="card-icon">
+        📚
+      </div>
+
       <h2>
         Acts & Sections
       </h2>
+
       <p>
         Search Indian Acts and individual legal provisions
         using connected legal sources.
       </p>
+
     </div>
 
+
     <div class="card">
-      <div class="card-icon">🇮🇳</div>
+
+      <div class="card-icon">
+        🇮🇳
+      </div>
+
       <h2>
         Indian Law
       </h2>
+
       <p>
         Research Indian statutes, provisions and reported
         legal authorities.
       </p>
+
     </div>
 
   </div>
 
+
   <div class="trust">
+
     <h2>
       🔐 Built for Reliable Legal Research
     </h2>
+
     <p>
       LawBot is being built to retrieve legal source material
       first and use AI to explain it, rather than relying only
       on the AI's memory.
     </p>
+
   </div>
 
 </div>
+
 
 <div
   class="answer-area"
   id="answerArea"
 ></div>
 
+
 <div class="disclaimer">
+
   ⚠️ LawBot AI provides legal information and research assistance.
   It is not a substitute for advice from a qualified lawyer.
+
 </div>
 
+
 <footer>
-  © 2026 LawBot AI — Legal research platform Created by (D T DESAI AND SONS)
+  © 2026 Legal research platform Created by (D T DESAI AND SONS)
 </footer>
+
 
 <script>
 
@@ -412,24 +504,85 @@ const answerArea =
 
 
 function escapeHTML(text) {
+
   return String(text || "")
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;")
     .replace(/'/g,"&#039;");
+
 }
 
 
+/*
+  FORMAT AI ANSWER
+  Converts raw URLs into clean source buttons.
+*/
+
 function formatAnswer(text) {
-  return String(text || "")
+
+  let html = String(text || "")
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
-    .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
-    .replace(/^### (.*)$/gm,"<h3>$1</h3>")
-    .replace(/^## (.*)$/gm,"<h2>$1</h2>")
-    .replace(/\n/g,"<br>");
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+
+
+  html = html
+    .replace(
+      /\*\*(.*?)\*\*/g,
+      "<strong>$1</strong>"
+    )
+    .replace(
+      /^### (.*)$/gm,
+      "<h3>$1</h3>"
+    )
+    .replace(
+      /^## (.*)$/gm,
+      "<h2>$1</h2>"
+    );
+
+
+  html = html.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    function(url) {
+
+      const cleanUrl =
+        url.replace(/[.,);]+$/g,"");
+
+
+      return `
+        <a
+          href="${cleanUrl}"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="
+            display:inline-block;
+            margin:4px 5px 4px 0;
+            padding:7px 11px;
+            background:#101828;
+            color:white;
+            border-radius:7px;
+            text-decoration:none;
+            font-size:12px;
+            font-weight:600;
+          "
+        >
+          🔗 Open Verified Source ↗
+        </a>
+      `;
+
+    }
+  );
+
+
+  return html.replace(
+    /\n/g,
+    "<br>"
+  );
+
 }
 
 
@@ -439,10 +592,12 @@ function formatAnswer(text) {
 
 function showResearchAnswer(data) {
 
+
   const sections =
     Array.isArray(data.sections)
       ? data.sections
       : [];
+
 
   const judgments =
     Array.isArray(data.judgments)
@@ -451,17 +606,145 @@ function showResearchAnswer(data) {
 
 
   /*
-    VERIFIED PROVISIONS
+    PROMINENT STATUTORY MAPPING
   */
 
-  let researchSections = "";
+  let mappingBanner = "";
+
 
   sections.forEach(function(section) {
+
 
     const mappings =
       Array.isArray(section.correspondingProvisions)
         ? section.correspondingProvisions
         : [];
+
+
+    if (mappings.length > 0) {
+
+
+      mappingBanner += `
+
+        <div style="
+          background:#fff8e1;
+          border:2px solid #e5b94b;
+          border-radius:14px;
+          padding:17px;
+          margin-bottom:20px;
+        ">
+
+          <div style="
+            font-size:17px;
+            font-weight:800;
+            margin-bottom:10px;
+          ">
+            🔄 Statutory Transition / Mapping
+          </div>
+
+
+          ${
+            mappings.map(function(mapping) {
+
+              return `
+
+                <div style="
+                  font-size:15px;
+                  font-weight:800;
+                  margin-top:7px;
+                ">
+
+                  ${escapeHTML(
+                    section.act || "Indian Law"
+                  )}
+
+                  Section
+
+                  ${escapeHTML(
+                    String(section.section || "")
+                  )}
+
+                  →
+
+                  ${escapeHTML(
+                    mapping.act || "Indian Law"
+                  )}
+
+                  Section
+
+                  ${escapeHTML(
+                    String(mapping.section || "")
+                  )}
+
+                </div>
+
+
+                ${
+                  mapping.relation
+                    ? `
+
+                      <div style="
+                        margin-top:5px;
+                        font-size:12px;
+                        color:#667085;
+                      ">
+
+                        Database classification:
+                        ${escapeHTML(
+                          mapping.relation
+                        )}
+
+                      </div>
+
+                    `
+                    : ""
+                }
+
+              `;
+
+            }).join("")
+          }
+
+
+          <div style="
+            margin-top:11px;
+            font-size:12px;
+            color:#667085;
+            line-height:1.5;
+          ">
+
+            This mapping is displayed from the connected
+            legal database. It is provided for research
+            purposes and should not be treated as an
+            independently determined statement of statutory
+            equivalence.
+
+          </div>
+
+        </div>
+
+      `;
+
+    }
+
+  });
+
+
+  /*
+    VERIFIED PROVISIONS
+  */
+
+  let researchSections = "";
+
+
+  sections.forEach(function(section) {
+
+
+    const mappings =
+      Array.isArray(section.correspondingProvisions)
+        ? section.correspondingProvisions
+        : [];
+
 
     researchSections += `
 
@@ -481,6 +764,7 @@ function showResearchAnswer(data) {
           📜 Verified Legal Provision
         </div>
 
+
         <div style="
           font-size:14px;
           color:#475569;
@@ -488,35 +772,53 @@ function showResearchAnswer(data) {
         ">
 
           <strong>
-            ${escapeHTML(section.act || "Indian Law")}
+            ${escapeHTML(
+              section.act ||
+              "Indian Law"
+            )}
           </strong>
+
 
           ${
             section.section
-              ? ` — Section ${escapeHTML(
+              ? `
+
+                — Section
+                ${escapeHTML(
                   String(section.section)
-                )}`
+                )}
+
+              `
               : ""
           }
 
         </div>
 
+
         ${
           section.heading
             ? `
+
               <div style="
                 font-weight:700;
                 margin-bottom:10px;
               ">
-                ${escapeHTML(section.heading)}
+
+                ${escapeHTML(
+                  section.heading
+                )}
+
               </div>
+
             `
             : ""
         }
 
+
         ${
           section.text
             ? `
+
               <div style="
                 background:white;
                 border:1px solid #e2e8f0;
@@ -525,15 +827,22 @@ function showResearchAnswer(data) {
                 font-size:13px;
                 line-height:1.7;
               ">
-                ${escapeHTML(section.text)}
+
+                ${escapeHTML(
+                  section.text
+                )}
+
               </div>
+
             `
             : ""
         }
 
+
         ${
           mappings.length > 0
             ? `
+
               <div style="
                 margin-top:14px;
                 background:#fff8e1;
@@ -546,8 +855,10 @@ function showResearchAnswer(data) {
                   🔄 Corresponding Provisions
                 </strong>
 
+
                 ${
                   mappings.map(function(mapping) {
+
                     return `
 
                       <div style="
@@ -562,24 +873,37 @@ function showResearchAnswer(data) {
                           )}
                         </strong>
 
+
                         ${
                           mapping.section
-                            ? ` — Section ${escapeHTML(
+                            ? `
+
+                              — Section
+                              ${escapeHTML(
                                 String(mapping.section)
-                              )}`
+                              )}
+
+                            `
                             : ""
                         }
+
 
                         ${
                           mapping.relation
                             ? `
+
                               <span style="
                                 color:#667085;
                               ">
-                                (${escapeHTML(
+
+                                (
+                                ${escapeHTML(
                                   mapping.relation
-                                )})
+                                )}
+                                )
+
                               </span>
+
                             `
                             : ""
                         }
@@ -587,17 +911,21 @@ function showResearchAnswer(data) {
                       </div>
 
                     `;
+
                   }).join("")
                 }
 
               </div>
+
             `
             : ""
         }
 
+
         ${
           section.url
             ? `
+
               <div style="
                 margin-top:12px;
               ">
@@ -607,17 +935,25 @@ function showResearchAnswer(data) {
                   target="_blank"
                   rel="noopener noreferrer"
                   style="
+                    display:inline-block;
+                    background:#101828;
+                    color:white;
+                    padding:9px 13px;
+                    border-radius:8px;
+                    font-size:12px;
                     font-weight:600;
                     text-decoration:none;
                   "
                 >
-                  View Original Legal Source ↗
+                  🔗 View Original Legal Source ↗
                 </a>
 
               </div>
+
             `
             : ""
         }
+
 
         <div style="
           margin-top:10px;
@@ -625,12 +961,15 @@ function showResearchAnswer(data) {
           color:#15803d;
           font-weight:600;
         ">
+
           ✓ Verified from connected legal database
+
         </div>
 
       </div>
 
     `;
+
   });
 
 
@@ -640,205 +979,286 @@ function showResearchAnswer(data) {
 
   let researchJudgments = "";
 
-  judgments.slice(0,10).forEach(function(judgment,index) {
 
-    researchJudgments += `
+  judgments
+    .slice(0,10)
+    .forEach(function(judgment,index) {
 
-      <div
-        class="research-judgment-card"
-        data-research-judgment-hidden="${
-          index >= 3 ? "true" : "false"
-        }"
-        style="
-          ${
+
+      researchJudgments += `
+
+        <div
+          class="research-judgment-card"
+          data-research-judgment-hidden="${
             index >= 3
-              ? "display:none;"
+              ? "true"
+              : "false"
+          }"
+          style="
+            ${
+              index >= 3
+                ? "display:none;"
+                : ""
+            }
+
+            border:1px solid #e4e7ec;
+            border-radius:14px;
+            padding:17px;
+            margin-bottom:13px;
+            background:white;
+          "
+        >
+
+
+          <div style="
+            display:flex;
+            justify-content:space-between;
+            gap:8px;
+            flex-wrap:wrap;
+            margin-bottom:10px;
+          ">
+
+            <span class="verified">
+              ✓ Verified Judgment
+            </span>
+
+
+            <span style="
+              font-size:12px;
+              color:#667085;
+            ">
+
+              ${escapeHTML(
+                judgment.date ||
+                "Date unavailable"
+              )}
+
+            </span>
+
+          </div>
+
+
+          <div style="
+            font-size:17px;
+            font-weight:700;
+            line-height:1.4;
+            margin-bottom:8px;
+          ">
+
+            ${escapeHTML(
+              judgment.caseName ||
+              "Unnamed judgment"
+            )}
+
+          </div>
+
+
+          <div style="
+            font-size:13px;
+            color:#475467;
+            margin-bottom:6px;
+          ">
+
+            🏛️
+
+            ${escapeHTML(
+              judgment.court ||
+              "Court not specified"
+            )}
+
+          </div>
+
+
+          ${
+            judgment.citation
+              ? `
+
+                <div style="
+                  font-size:13px;
+                  color:#475467;
+                  margin-bottom:8px;
+                ">
+
+                  📚
+                  ${escapeHTML(
+                    judgment.citation
+                  )}
+
+                </div>
+
+              `
+              : `
+
+                <div style="
+                  font-size:12px;
+                  color:#98a2b3;
+                  margin-bottom:8px;
+                ">
+
+                  📚 Citation not supplied by connected source
+
+                </div>
+
+              `
+          }
+
+
+          ${
+            judgment.facts
+              ? `
+
+                <div style="
+                  margin-top:12px;
+                  font-size:13px;
+                  line-height:1.6;
+                ">
+
+                  <strong>
+                    Facts:
+                  </strong>
+
+                  <br>
+
+                  ${escapeHTML(
+                    judgment.facts
+                  )}
+
+                </div>
+
+              `
               : ""
           }
-          border:1px solid #e4e7ec;
-          border-radius:14px;
-          padding:17px;
-          margin-bottom:13px;
-          background:white;
-        "
-      >
 
-        <div style="
-          display:flex;
-          justify-content:space-between;
-          gap:8px;
-          flex-wrap:wrap;
-          margin-bottom:10px;
-        ">
 
-          <span class="verified">
-            ✓ Verified Judgment
-          </span>
+          ${
+            judgment.issues
+              ? `
 
-          <span style="
-            font-size:12px;
-            color:#667085;
-          ">
-            ${escapeHTML(
-              judgment.date ||
-              "Date unavailable"
-            )}
-          </span>
+                <div style="
+                  margin-top:10px;
+                  font-size:13px;
+                  line-height:1.6;
+                ">
+
+                  <strong>
+                    Issues:
+                  </strong>
+
+                  <br>
+
+                  ${escapeHTML(
+                    judgment.issues
+                  )}
+
+                </div>
+
+              `
+              : ""
+          }
+
+
+          ${
+            judgment.decision
+              ? `
+
+                <div style="
+                  margin-top:10px;
+                  font-size:13px;
+                  line-height:1.6;
+                ">
+
+                  <strong>
+                    Decision:
+                  </strong>
+
+                  <br>
+
+                  ${escapeHTML(
+                    judgment.decision
+                  )}
+
+                </div>
+
+              `
+              : ""
+          }
+
+
+          ${
+            judgment.ratio
+              ? `
+
+                <div style="
+                  margin-top:10px;
+                  padding:11px;
+                  background:#f8fafc;
+                  border-radius:9px;
+                  font-size:13px;
+                  line-height:1.6;
+                ">
+
+                  <strong>
+                    Ratio / Legal Principle:
+                  </strong>
+
+                  <br>
+
+                  ${escapeHTML(
+                    judgment.ratio
+                  )}
+
+                </div>
+
+              `
+              : ""
+          }
+
+
+          ${
+            judgment.source
+              ? `
+
+                <div style="
+                  margin-top:13px;
+                ">
+
+                  <a
+                    href="${escapeHTML(
+                      judgment.source
+                    )}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="
+                      display:inline-block;
+                      background:#101828;
+                      color:white;
+                      text-decoration:none;
+                      padding:9px 13px;
+                      border-radius:8px;
+                      font-size:12px;
+                      font-weight:600;
+                    "
+                  >
+                    🔗 View Original Judgment ↗
+                  </a>
+
+                </div>
+
+              `
+              : ""
+          }
+
 
         </div>
 
+      `;
 
-        <div style="
-          font-size:17px;
-          font-weight:700;
-          line-height:1.4;
-          margin-bottom:8px;
-        ">
-          ${escapeHTML(
-            judgment.caseName ||
-            "Unnamed judgment"
-          )}
-        </div>
+    });
 
 
-        <div style="
-          font-size:13px;
-          color:#475467;
-          margin-bottom:6px;
-        ">
-          🏛️ ${escapeHTML(
-            judgment.court ||
-            "Court not specified"
-          )}
-        </div>
-
-
-        ${
-          judgment.citation
-            ? `
-              <div style="
-                font-size:13px;
-                color:#475467;
-                margin-bottom:8px;
-              ">
-                📚 ${escapeHTML(
-                  judgment.citation
-                )}
-              </div>
-            `
-            : ""
-        }
-
-
-        ${
-          judgment.facts
-            ? `
-              <div style="
-                margin-top:12px;
-                font-size:13px;
-                line-height:1.6;
-              ">
-                <strong>Facts:</strong><br>
-                ${escapeHTML(judgment.facts)}
-              </div>
-            `
-            : ""
-        }
-
-
-        ${
-          judgment.issues
-            ? `
-              <div style="
-                margin-top:10px;
-                font-size:13px;
-                line-height:1.6;
-              ">
-                <strong>Issues:</strong><br>
-                ${escapeHTML(judgment.issues)}
-              </div>
-            `
-            : ""
-        }
-
-
-        ${
-          judgment.decision
-            ? `
-              <div style="
-                margin-top:10px;
-                font-size:13px;
-                line-height:1.6;
-              ">
-                <strong>Decision:</strong><br>
-                ${escapeHTML(judgment.decision)}
-              </div>
-            `
-            : ""
-        }
-
-
-        ${
-          judgment.ratio
-            ? `
-              <div style="
-                margin-top:10px;
-                padding:11px;
-                background:#f8fafc;
-                border-radius:9px;
-                font-size:13px;
-                line-height:1.6;
-              ">
-
-                <strong>
-                  Ratio / Legal Principle:
-                </strong>
-
-                <br>
-
-                ${escapeHTML(judgment.ratio)}
-
-              </div>
-            `
-            : ""
-        }
-
-
-        ${
-          judgment.source
-            ? `
-              <div style="
-                margin-top:13px;
-              ">
-
-                <a
-                  href="${escapeHTML(judgment.source)}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style="
-                    display:inline-block;
-                    background:#101828;
-                    color:white;
-                    text-decoration:none;
-                    padding:9px 13px;
-                    border-radius:8px;
-                    font-size:12px;
-                    font-weight:600;
-                  "
-                >
-                  View Original Judgment ↗
-                </a>
-
-              </div>
-            `
-            : ""
-        }
-
-      </div>
-
-    `;
-  });
-
+  /*
+    VIEW ALL JUDGMENTS BUTTON
+  */
 
   const viewAllResearchJudgments =
     judgments.length > 3
@@ -858,10 +1278,14 @@ function showResearchAnswer(data) {
             margin-bottom:15px;
           "
         >
-          👁️ View All ${Math.min(
+
+          👁️ View All
+          ${Math.min(
             judgments.length,
             10
-          )} Research Judgments
+          )}
+          Research Judgments
+
         </button>
 
       `
@@ -875,6 +1299,7 @@ function showResearchAnswer(data) {
   answerArea.innerHTML = `
 
     <div class="answer">
+
 
       <div class="answer-header">
 
@@ -894,11 +1319,15 @@ function showResearchAnswer(data) {
 
         </div>
 
+
         <span class="verified">
           ✓ Verified Research
         </span>
 
       </div>
+
+
+      ${mappingBanner}
 
 
       ${
@@ -910,8 +1339,11 @@ function showResearchAnswer(data) {
               font-weight:800;
               margin-bottom:13px;
             ">
+
               📚 Relevant Provisions
+
             </div>
+
 
             ${researchSections}
 
@@ -929,19 +1361,26 @@ function showResearchAnswer(data) {
               font-weight:800;
               margin:20px 0 13px;
             ">
+
               ⚖️ Verified Judgments
+
             </div>
+
 
             <div style="
               font-size:13px;
               color:#667085;
               margin-bottom:14px;
             ">
+
               Judgments retrieved from the connected
               legal database.
+
             </div>
 
+
             ${researchJudgments}
+
 
             ${viewAllResearchJudgments}
 
@@ -957,8 +1396,10 @@ function showResearchAnswer(data) {
               font-size:13px;
               color:#667085;
             ">
+
               ⚖️ No verified judgment was retrieved
               for this research query.
+
             </div>
 
           `
@@ -974,7 +1415,11 @@ function showResearchAnswer(data) {
         line-height:1.75;
         margin-top:18px;
       ">
-        ${formatAnswer(data.answer)}
+
+        ${formatAnswer(
+          data.answer
+        )}
+
       </div>
 
 
@@ -983,9 +1428,11 @@ function showResearchAnswer(data) {
         font-size:12px;
         color:#667085;
       ">
+
         🔐 AI analysis is based on retrieved legal
         source material. Missing information is not
         supplied from AI memory.
+
       </div>
 
 
@@ -995,6 +1442,7 @@ function showResearchAnswer(data) {
         margin-top:18px;
         flex-wrap:wrap;
       ">
+
 
         <button
           id="copyResearchAnswer"
@@ -1007,7 +1455,9 @@ function showResearchAnswer(data) {
             font-weight:600;
           "
         >
+
           📋 Copy Answer
+
         </button>
 
 
@@ -1023,10 +1473,14 @@ function showResearchAnswer(data) {
             font-weight:600;
           "
         >
+
           🔵 New Search
+
         </button>
 
+
       </div>
+
 
     </div>
 
@@ -1042,6 +1496,7 @@ function showResearchAnswer(data) {
       "viewAllResearchJudgments"
     );
 
+
   if (viewAllButton) {
 
     viewAllButton.addEventListener(
@@ -1053,6 +1508,7 @@ function showResearchAnswer(data) {
             'div[data-research-judgment-hidden="true"]'
           );
 
+
         hidden.forEach(function(card) {
 
           card.style.display = "";
@@ -1062,6 +1518,7 @@ function showResearchAnswer(data) {
           );
 
         });
+
 
         viewAllButton.style.display =
           "none";
@@ -1081,6 +1538,7 @@ function showResearchAnswer(data) {
       "copyResearchAnswer"
     );
 
+
   if (copyButton) {
 
     copyButton.addEventListener(
@@ -1093,16 +1551,21 @@ function showResearchAnswer(data) {
             data.answer || ""
           );
 
+
           this.textContent =
             "✓ Copied";
 
+
           setTimeout(
             () => {
+
               this.textContent =
                 "📋 Copy Answer";
+
             },
             1500
           );
+
 
         } catch {
 
@@ -1162,9 +1625,13 @@ async function searchLaw() {
   const query =
     input.value.trim();
 
+
   if (!query) {
+
     input.focus();
+
     return;
+
   }
 
 
@@ -1186,8 +1653,10 @@ async function searchLaw() {
         margin-top:10px;
         color:#667085;
       ">
+
         LawBot is checking verified legal sources
         and connected judgments.
+
       </p>
 
     </div>
@@ -1236,6 +1705,7 @@ async function searchLaw() {
 
     console.error(error);
 
+
     answerArea.innerHTML = `
 
       <div class="answer">
@@ -1243,6 +1713,7 @@ async function searchLaw() {
         <div class="answer-title">
           ⚠️ Research Error
         </div>
+
 
         <div style="
           margin-top:15px;
@@ -1295,7 +1766,9 @@ input.addEventListener(
   function(event) {
 
     if (event.key === "Enter") {
+
       searchLaw();
+
     }
 
   }
