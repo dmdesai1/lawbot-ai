@@ -245,20 +245,64 @@ footer {
   © 2026 LawBot AI — Legal Research Platform
 </footer>
 <script>
-document.querySelector("button").addEventListener("click", function () {
+document.querySelector("button").addEventListener("click", async function () {
     const input = document.querySelector("input");
     const query = input.value.trim();
 
     if (!query) {
-        alert("Please enter a legal question or search term.");
+        alert("Please enter a legal question.");
         return;
     }
 
-    window.open(
-        "https://www.google.com/search?q=" +
-        encodeURIComponent(query + " Indian law judgment"),
-        "_blank"
-    );
+    const button = document.querySelector("button");
+    button.disabled = true;
+    button.textContent = "Thinking...";
+
+    let answerBox = document.getElementById("answer");
+
+    if (!answerBox) {
+        answerBox = document.createElement("div");
+        answerBox.id = "answer";
+        answerBox.style.margin = "30px auto";
+        answerBox.style.maxWidth = "900px";
+        answerBox.style.padding = "20px";
+        answerBox.style.background = "white";
+        answerBox.style.borderRadius = "12px";
+        answerBox.style.boxShadow = "0 4px 15px rgba(0,0,0,0.08)";
+        answerBox.style.lineHeight = "1.7";
+
+        document.querySelector("button").parentElement.parentElement.appendChild(answerBox);
+    }
+
+    answerBox.textContent = "LawBot AI is researching your question...";
+
+    try {
+        const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                query: query
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Something went wrong.");
+        }
+
+        answerBox.innerHTML =
+            "<strong>LawBot AI:</strong><br><br>" +
+            data.answer.replace(/\n/g, "<br>");
+    } catch (error) {
+        answerBox.textContent =
+            "Sorry, an error occurred: " + error.message;
+    }
+
+    button.disabled = false;
+    button.textContent = "Search";
 });
 </script>
 </body>
