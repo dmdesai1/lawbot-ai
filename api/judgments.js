@@ -13,7 +13,10 @@ export default async function handler(req, res) {
     let section = "";
     let court = "";
 
-    // Get request data
+    // -----------------------------------------------
+    // GET REQUEST DATA
+    // -----------------------------------------------
+
     if (req.method === "POST") {
 
       const body = req.body || {};
@@ -32,16 +35,13 @@ export default async function handler(req, res) {
 
     }
 
-
     const userQuery = String(query).trim();
     const q = userQuery.toLowerCase();
 
 
-    /*
-      -----------------------------------------------
-      AUTOMATIC LEGAL CONTEXT
-      -----------------------------------------------
-    */
+    // -----------------------------------------------
+    // AUTOMATIC LEGAL CONTEXT
+    // -----------------------------------------------
 
     // Cheque bounce normally refers to Section 138
     if (
@@ -76,12 +76,22 @@ export default async function handler(req, res) {
     }
 
 
-    // Section from user's question
+    // -----------------------------------------------
+    // SECTION DETECTION
+    // -----------------------------------------------
+
     if (!section) {
 
-      const sectionMatch = q.match(
-        /\b(?:section|sec\.?)\s*(\d+[a-z]?)\b/i
-      );
+      const sectionMatch =
+        q.match(
+          /\b(?:section|sec\.?)\s*(\d+[a-z]?)\b/i
+        ) ||
+        q.match(
+          /\b(?:BNS|BNSS|BSA|IPC|CrPC|CPC)\s*[-:]?\s*(\d+[a-z]?)\b/i
+        ) ||
+        q.match(
+          /\b(?:NI\s*ACT|N\.I\.\s*ACT)\s*[-:]?\s*(\d+[a-z]?)\b/i
+        );
 
       if (sectionMatch) {
         section = sectionMatch[1];
@@ -90,7 +100,10 @@ export default async function handler(req, res) {
     }
 
 
-    // Court
+    // -----------------------------------------------
+    // COURT DETECTION
+    // -----------------------------------------------
+
     if (!court) {
 
       if (q.includes("supreme court")) {
@@ -104,11 +117,9 @@ export default async function handler(req, res) {
     }
 
 
-    /*
-      -----------------------------------------------
-      NATURAL LANGUAGE DATABASE SEARCH
-      -----------------------------------------------
-    */
+    // -----------------------------------------------
+    // NATURAL LANGUAGE DATABASE SEARCH
+    // -----------------------------------------------
 
     if (!act && !section && userQuery) {
 
@@ -141,9 +152,7 @@ export default async function handler(req, res) {
 
       const sectionResult =
         results.find(function(result) {
-
           return result.kind === "section";
-
         });
 
 
@@ -168,11 +177,9 @@ export default async function handler(req, res) {
     }
 
 
-    /*
-      -----------------------------------------------
-      SEARCH VERIFIED JUDGMENTS
-      -----------------------------------------------
-    */
+    // -----------------------------------------------
+    // SEARCH VERIFIED JUDGMENTS
+    // -----------------------------------------------
 
     const params =
       new URLSearchParams();
@@ -201,13 +208,12 @@ export default async function handler(req, res) {
 
 
     const allJudgments = [];
-
     let total = 0;
 
 
-    /*
-      Follow pagination
-    */
+    // -----------------------------------------------
+    // FOLLOW PAGINATION
+    // -----------------------------------------------
 
     while (url) {
 
@@ -234,9 +240,7 @@ export default async function handler(req, res) {
         data.total || total;
 
 
-      if (
-        Array.isArray(data.judgments)
-      ) {
+      if (Array.isArray(data.judgments)) {
 
         allJudgments.push(
           ...data.judgments
@@ -251,11 +255,9 @@ export default async function handler(req, res) {
     }
 
 
-    /*
-      -----------------------------------------------
-      RELEVANCE SCORING
-      -----------------------------------------------
-    */
+    // -----------------------------------------------
+    // RELEVANCE SCORING
+    // -----------------------------------------------
 
     const stopWords = new Set([
       "the",
@@ -287,7 +289,13 @@ export default async function handler(req, res) {
       "is",
       "are",
       "a",
-      "an"
+      "an",
+      "what",
+      "which",
+      "how",
+      "does",
+      "can",
+      "about"
     ]);
 
 
@@ -308,19 +316,42 @@ export default async function handler(req, res) {
     function calculateScore(judgment) {
 
       const title =
-        String(judgment.title || "").toLowerCase();
+        String(
+          judgment.title || ""
+        ).toLowerCase();
 
       const ratio =
-        String(judgment.ratio_decidendi || "").toLowerCase();
+        String(
+          judgment.ratio_decidendi || ""
+        ).toLowerCase();
 
       const applied =
-        String(judgment.applied_to_this_section || "").toLowerCase();
+        String(
+          judgment.applied_to_this_section || ""
+        ).toLowerCase();
 
       const basis =
-        String(judgment.basis || "").toLowerCase();
+        String(
+          judgment.basis || ""
+        ).toLowerCase();
+
+      const facts =
+        String(
+          judgment.facts || ""
+        ).toLowerCase();
+
+      const issues =
+        String(
+          judgment.issues || ""
+        ).toLowerCase();
+
+      const decision =
+        String(
+          judgment.decision || ""
+        ).toLowerCase();
 
       const text =
-        `${title} ${ratio} ${applied} ${basis}`;
+        `${title} ${ratio} ${applied} ${basis} ${facts} ${issues} ${decision}`;
 
 
       let score = 0;
@@ -328,23 +359,38 @@ export default async function handler(req, res) {
 
       queryWords.forEach(function(word) {
 
-        // Strongest weight: case title
+        // Case title
         if (title.includes(word)) {
           score += 10;
         }
 
-        // Very important: ratio
+        // Ratio
         if (ratio.includes(word)) {
           score += 8;
         }
 
-        // Section application
+        // Application to section
         if (applied.includes(word)) {
           score += 6;
         }
 
         // Database basis
         if (basis.includes(word)) {
+          score += 4;
+        }
+
+        // Facts
+        if (facts.includes(word)) {
+          score += 4;
+        }
+
+        // Issues
+        if (issues.includes(word)) {
+          score += 4;
+        }
+
+        // Decision
+        if (decision.includes(word)) {
           score += 4;
         }
 
@@ -356,9 +402,9 @@ export default async function handler(req, res) {
       });
 
 
-      /*
-        Extra relevance for notice/service questions
-      */
+      // ---------------------------------------------
+      // NOTICE / SERVICE RELEVANCE
+      // ---------------------------------------------
 
       const noticeWords = [
         "notice",
@@ -385,9 +431,9 @@ export default async function handler(req, res) {
       });
 
 
-      /*
-        Extra relevance for cheque bounce
-      */
+      // ---------------------------------------------
+      // CHEQUE BOUNCE RELEVANCE
+      // ---------------------------------------------
 
       if (
         (
@@ -412,19 +458,18 @@ export default async function handler(req, res) {
     }
 
 
-    /*
-      -----------------------------------------------
-      SORT BY RELEVANCE
-      -----------------------------------------------
-    */
+    // -----------------------------------------------
+    // SORT BY RELEVANCE
+    // -----------------------------------------------
 
     const rankedJudgments =
       allJudgments
         .map(function(judgment) {
 
           return {
-            judgment: judgment,
-            score: calculateScore(judgment)
+            judgment,
+            score:
+              calculateScore(judgment)
           };
 
         })
@@ -435,11 +480,9 @@ export default async function handler(req, res) {
         });
 
 
-    /*
-      -----------------------------------------------
-      RETURN TOP VERIFIED RESULTS
-      -----------------------------------------------
-    */
+    // -----------------------------------------------
+    // RETURN TOP VERIFIED RESULTS
+    // -----------------------------------------------
 
     const topJudgments =
       rankedJudgments
@@ -457,46 +500,89 @@ export default async function handler(req, res) {
             relevanceScore:
               item.score,
 
+            // Identity
             caseName:
-              judgment.title,
+              judgment.title ||
+              judgment.case_name ||
+              null,
 
             court:
-              judgment.court_name,
+              judgment.court_name ||
+              judgment.court ||
+              null,
+
+            courtLevel:
+              judgment.court_level ||
+              null,
 
             date:
-              judgment.date,
+              judgment.date ||
+              judgment.decision_date ||
+              null,
 
             citation:
-              judgment.citation,
+              judgment.citation ||
+              null,
 
             cnr:
-              judgment.cnr,
+              judgment.cnr ||
+              null,
 
-            source:
-              judgment.url,
+            // Research material
+            facts:
+              judgment.facts ||
+              judgment.case_facts ||
+              null,
 
-            precedentialValue:
-              judgment.precedential_value,
+            issues:
+              judgment.issues ||
+              judgment.legal_issues ||
+              null,
+
+            decision:
+              judgment.decision ||
+              judgment.order ||
+              judgment.holding ||
+              null,
 
             ratio:
-              judgment.ratio_decidendi,
+              judgment.ratio_decidendi ||
+              judgment.ratio ||
+              null,
 
             appliedToSection:
-              judgment.applied_to_this_section,
+              judgment.applied_to_this_section ||
+              null,
 
             basis:
-              judgment.basis
+              judgment.basis ||
+              null,
+
+            precedentialValue:
+              judgment.precedential_value ||
+              null,
+
+            courtMarking:
+              judgment.court_marking ||
+              null,
+
+            decidedUnder:
+              judgment.decided_under ||
+              null,
+
+            source:
+              judgment.url ||
+              judgment.source ||
+              null
 
           };
 
         });
 
 
-    /*
-      -----------------------------------------------
-      RESPONSE
-      -----------------------------------------------
-    */
+    // -----------------------------------------------
+    // RESPONSE
+    // -----------------------------------------------
 
     return res.status(200).json({
 
@@ -514,8 +600,7 @@ export default async function handler(req, res) {
       court:
         court || null,
 
-      total:
-        total,
+      total,
 
       count:
         topJudgments.length,
@@ -528,7 +613,10 @@ export default async function handler(req, res) {
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "LawBot judgment search error:",
+      error
+    );
 
     return res.status(500).json({
 
