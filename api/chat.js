@@ -1,6 +1,8 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
   try {
@@ -14,7 +16,10 @@ export default async function handler(req, res) {
 
     const userQuery = query.trim();
 
-    // Detect common Indian Acts
+    // --------------------------------------------------
+    // ACT DETECTION
+    // --------------------------------------------------
+
     const actMap = [
       {
         pattern: /\bBNS\b|Bharatiya Nyaya Sanhita/i,
@@ -27,7 +32,7 @@ export default async function handler(req, res) {
         name: "Bharatiya Nagarik Suraksha Sanhita, 2023"
       },
       {
-        pattern: /\bBSA\b|Bharatiya Sakshya Adhiniyam/i,
+        pattern: /\bBSA\b|Bharatiya Sakshya Adhiniyam|Evidence Act/i,
         id: "bsa",
         name: "Bharatiya Sakshya Adhiniyam, 2023"
       },
@@ -35,20 +40,41 @@ export default async function handler(req, res) {
         pattern: /\bIPC\b|Indian Penal Code/i,
         id: "ipc",
         name: "Indian Penal Code, 1860"
+      },
+      {
+        pattern: /\bCrPC\b|Code of Criminal Procedure/i,
+        id: "crpc",
+        name: "Code of Criminal Procedure, 1973"
+      },
+      {
+        pattern: /\bCPC\b|Code of Civil Procedure/i,
+        id: "cpc",
+        name: "Code of Civil Procedure, 1908"
       }
     ];
 
-    const selectedAct = actMap.find(act => act.pattern.test(userQuery));
+    const selectedAct = actMap.find(act =>
+      act.pattern.test(userQuery)
+    );
 
-    // Detect section number
+    // --------------------------------------------------
+    // SECTION DETECTION
+    // --------------------------------------------------
+
     const sectionMatch = userQuery.match(
       /\b(?:section|sec\.?)\s*([0-9]+[A-Za-z-]*)\b/i
     );
 
     let verifiedContext = "";
     let sourceUrl = "";
+    let verified = false;
 
-    // Retrieve the actual legal provision
+    let correspondingProvisions = [];
+
+    // --------------------------------------------------
+    // RETRIEVE VERIFIED LEGAL PROVISION
+    // --------------------------------------------------
+
     if (selectedAct && sectionMatch) {
       const sectionNumber = sectionMatch[1];
 
@@ -63,16 +89,37 @@ export default async function handler(req, res) {
         if (legalData.section) {
           const section = legalData.section;
 
+          verified = true;
+
           sourceUrl =
             legalData.url ||
+            section.url ||
             `https://indiacode.ecourtsindia.com/${selectedAct.id}/section/${sectionNumber}/`;
+
+          // ------------------------------------------------
+          // GET IPC -> BNS / CrPC -> BNSS / BSA MAPPINGS
+          // ------------------------------------------------
+
+          if (Array.isArray(legalData.corresponds_to)) {
+            correspondingProvisions =
+              legalData.corresponds_to.map(mapping => ({
+                act: mapping.act || "",
+                section: mapping.section || "",
+                relation: mapping.relation || ""
+              }));
+          }
 
           verifiedContext = `
 VERIFIED LEGAL SOURCE DATA
 
-Act: ${legalData.act?.short_title || selectedAct.name}
-Section: ${section.number}
-Heading: ${section.heading}
+Act:
+${legalData.act?.short_title || selectedAct.name}
+
+Section:
+${section.number || sectionNumber}
+
+Heading:
+${section.heading || "Heading unavailable"}
 
 Actual statutory text:
 ${section.text || "Text unavailable"}
@@ -80,10 +127,25 @@ ${section.text || "Text unavailable"}
 Source:
 ${sourceUrl}
 
+VERIFICATION STATUS:
+This provision was successfully retrieved from the connected legal database.
+
+CORRESPONDING PROVISIONS:
+${
+  correspondingProvisions.length > 0
+    ? correspondingProvisions
+        .map(
+          mapping =>
+            `${mapping.act} Section ${mapping.section} (${mapping.relation || "corresponding provision"})`
+        )
+        .join("\n")
+    : "No corresponding provision was returned by the legal database."
+}
+
 IMPORTANT:
-The above section data was retrieved directly from the legal database API.
-Use this retrieved data as the source of truth.
-Do not change the section number, heading, or statutory text.
+The retrieved legal provision above is verified source data.
+Treat it as the source of truth.
+Do not invent, alter, or contradict the Act, section number, heading, or statutory text.
 `;
         }
       } else if (legalResponse.status === 404) {
@@ -93,42 +155,67 @@ VERIFICATION RESULT
 The requested ${selectedAct.name}, Section ${sectionNumber}, was not found in the connected legal database.
 
 Do NOT invent or guess its contents.
+
 Tell the user that the provision could not be verified.
 `;
       }
     }
 
-    const prompt = `You are LawBot AI, an Indian legal research assistant.
+    // --------------------------------------------------
+    // GEMINI PROMPT
+    // --------------------------------------------------
 
-Your job is to explain verified Indian legal provisions clearly and accurately.
+    const prompt = `
+You are LawBot AI, an Indian legal research assistant.
+
+Your task is to explain Indian legal provisions using VERIFIED LEGAL SOURCE DATA whenever it is supplied.
 
 CRITICAL RULES:
 
-1. When VERIFIED LEGAL SOURCE DATA is provided, treat it as the source of truth.
-2. Never change or contradict the verified Act, section number, heading, or statutory text.
-3. Never invent legal provisions, cases, citations, dates, or judgments.
-4. The verified statutory text is already displayed separately to the user.
-5. DO NOT repeat the full statutory text in your answer unless the user specifically asks for the exact text.
-6. Instead, explain the provision in simple language.
-7. Give the practical legal meaning and important points.
-8. If the provision has subsections, explain each subsection briefly.
-9. Clearly distinguish IPC, BNS, BNSS and BSA.
-10. If a provision could not be verified, clearly say so.
-11. Do not claim that a judgment exists unless it has been verified.
-12. Do not say that information is officially verified unless the source data supports that statement.
-13. Do not give legal advice as if you are the user's lawyer.
-14. Keep the explanation focused and useful.
+1. VERIFIED LEGAL SOURCE DATA is the source of truth.
+2. If verified legal source data is provided, NEVER say that no verified source was provided.
+3. Never invent a legal provision, section, case, citation, date, judgment, or statutory text.
+4. The verified statutory text is displayed separately to the user.
+5. Do NOT repeat the full statutory text unless the user specifically asks for the exact text.
+6. Explain the provision in clear, concise language.
+7. Explain its practical legal meaning.
+8. If there are subsections, explain the subsections briefly.
+9. Clearly distinguish IPC, BNS, CrPC, BNSS, BSA and other Acts.
+10. If corresponding provisions are supplied, mention the mapping accurately.
+11. Do not describe a similarity mapping as an officially enacted equivalence unless the source specifically establishes that.
+12. Do not claim that a judgment exists unless it has been verified.
+13. Do not invent case citations.
+14. Do not provide legal advice as though you are the user's lawyer.
+15. If the provision could not be verified, clearly say that it could not be verified.
+16. Keep the answer focused and useful.
 
-${verifiedContext || "No specific verified provision was retrieved for this question."}
+${verifiedContext || "NO VERIFIED LEGAL SOURCE DATA WAS RETRIEVED FOR THIS QUERY."}
 
 User's question:
 ${userQuery}
 
-Give a concise legal explanation based on the verified information above.
+${
+  verified
+    ? `
+The legal provision above WAS successfully verified.
 
-Do not repeat the full statutory text.`;
+Therefore:
+- Explain the verified provision.
+- Do not say that the source was not provided.
+- Do not say that the provision could not be verified.
+`
+    : ""
+}
 
-    // Ask Gemini to explain the verified material
+Give a concise legal explanation.
+
+Do not repeat the full statutory text.
+`;
+
+    // --------------------------------------------------
+    // GEMINI API
+    // --------------------------------------------------
+
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
       {
@@ -156,7 +243,9 @@ Do not repeat the full statutory text.`;
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: data.error?.message || "Gemini API error"
+        error:
+          data.error?.message ||
+          "Gemini API error"
       });
     }
 
@@ -164,14 +253,19 @@ Do not repeat the full statutory text.`;
       data.candidates?.[0]?.content?.parts?.[0]?.text ||
       "I could not generate an answer.";
 
+    // --------------------------------------------------
+    // RETURN RESULT
+    // --------------------------------------------------
+
     return res.status(200).json({
       answer,
-      verified: Boolean(verifiedContext),
-      source: sourceUrl || null
+      verified,
+      source: sourceUrl || null,
+      correspondingProvisions
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("LawBot chat error:", error);
 
     return res.status(500).json({
       error: "Server error. Please try again."
