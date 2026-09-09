@@ -525,54 +525,64 @@ function formatAnswer(text) {
   let raw = String(text || "");
 
   /*
-    Convert HTML anchor links into clean source buttons
-    before escaping the rest of the content.
+    Recover escaped HTML links such as:
+    &lt;a href="https://..." target="_blank"...&gt;
   */
 
   raw = raw.replace(
-    /<a\b[^>]*href=["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
+    /(?:&lt;|<)\s*a\b[^>]*?(?:href=|&quot;href&quot;=)\s*(?:&quot;|")?(https?:\/\/[^"&\s]+)(?:&quot;|")?[^>]*(?:&gt;|>)[\s\S]*?(?:&lt;|<)\/a(?:&gt;|>)/gi,
     function(match, url) {
-
       return ` SOURCE_LINK:${url} `;
-
     }
   );
 
 
   /*
-    Convert Markdown links:
-    [Source](https://example.com)
+    Also catch any remaining href="URL" fragments.
   */
 
   raw = raw.replace(
-    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    function(match, label, url) {
-
+    /href=(?:&quot;|")?(https?:\/\/[^"&\s]+)(?:&quot;|")?/gi,
+    function(match, url) {
       return ` SOURCE_LINK:${url} `;
-
     }
   );
 
 
   /*
-    Remove any remaining HTML tags.
+    Remove leftover HTML attributes/tags.
   */
 
   raw = raw.replace(
-    /<[^>]*>/g,
+    /(?:target|rel|style|class|id|onclick)=["'][^"']*["']/gi,
+    ""
+  );
+
+  raw = raw.replace(
+    /(?:target|rel|style|class|id|onclick)=&quot;.*?&quot;/gi,
+    ""
+  );
+
+  raw = raw.replace(
+    /<\/?a\b[^>]*>/gi,
+    ""
+  );
+
+  raw = raw.replace(
+    /&lt;\/?a\b[^&]*&gt;/gi,
     ""
   );
 
 
   /*
-    Escape HTML safely.
+    Escape remaining content safely.
   */
 
   let html = escapeHTML(raw);
 
 
   /*
-    Convert source placeholders into clean buttons.
+    Convert source URLs into clean buttons.
   */
 
   html = html.replace(
@@ -580,8 +590,7 @@ function formatAnswer(text) {
     function(match, url) {
 
       const cleanUrl =
-        url.replace(/[.,);]+$/g,"");
-
+        url.replace(/[.,);]+$/g, "");
 
       return `
         <a
@@ -609,7 +618,7 @@ function formatAnswer(text) {
 
 
   /*
-    Basic Markdown formatting.
+    Markdown formatting.
   */
 
   html = html
@@ -627,13 +636,8 @@ function formatAnswer(text) {
     );
 
 
-  return html.replace(
-    /\n/g,
-    "<br>"
-  );
-
-                }
-
+  return html.replace(/\n/g, "<br>");
+}
 
 /*
   AI LEGAL RESEARCH RESULT
