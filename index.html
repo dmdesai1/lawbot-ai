@@ -509,39 +509,75 @@ function detectJudgmentSearch(query) {
   const q = query.toLowerCase();
 
   let act = null;
+  let section = null;
+  let court = null;
 
+  // Negotiable Instruments Act
   if (
     q.includes("negotiable instruments act") ||
     q.includes("negotiable instrument act") ||
     q.includes("ni act") ||
-    q.includes("n.i. act")
+    q.includes("n.i. act") ||
+    q.includes("cheque bounce") ||
+    q.includes("check bounce") ||
+    q.includes("dishonoured cheque") ||
+    q.includes("dishonored cheque")
   ) {
     act = "ni-act";
   }
 
+  // Section number, if user provides one
   const sectionMatch = q.match(
     /\b(?:section|sec\.?)\s*(\d+[a-z]?)\b/i
   );
 
+  if (sectionMatch) {
+    section = sectionMatch[1];
+  }
+
+  // Court
+  if (q.includes("supreme court")) {
+    court = "SC";
+  } else if (q.includes("high court")) {
+    court = "HC";
+  }
+
+  // Words indicating a judgment/case search
   const wantsJudgments =
     q.includes("judgment") ||
-    q.includes("judgements") ||
+    q.includes("judgement") ||
     q.includes("case") ||
     q.includes("cases") ||
     q.includes("precedent") ||
+    q.includes("ruling") ||
+    q.includes("decision") ||
     q.includes("supreme court") ||
-    q.includes("high court");
+    q.includes("high court") ||
+    q.includes("cheque bounce") ||
+    q.includes("check bounce") ||
+    q.includes("notice was not properly served") ||
+    q.includes("notice not served");
 
-  if (act && sectionMatch && wantsJudgments) {
+  /*
+    Natural-language judgment search.
+
+    If the user clearly asks for cases/judgments,
+    send the original query to the judgment API.
+  */
+
+  if (wantsJudgments) {
+
     return {
+      query: query,
       act: act,
-      section: sectionMatch[1],
-      court: q.includes("supreme court") ? "SC" : null
+      section: section,
+      court: court
     };
+
   }
 
   return null;
-}
+            }
 
 
 // Call verified judgment API
