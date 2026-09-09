@@ -27,9 +27,6 @@ export default async function handler(req, res) {
 
     /*
       COMMON INDIAN ACT ALIASES
-
-      These allow exact section verification
-      for frequently used Acts.
     */
 
     const actMap = [
@@ -105,7 +102,7 @@ export default async function handler(req, res) {
 
 
     /*
-      Find a recognised Act.
+      FIND ACT
     */
 
     const selectedAct = actMap.find(act =>
@@ -116,14 +113,7 @@ export default async function handler(req, res) {
 
 
     /*
-      Detect section/provision number.
-
-      Supports:
-      Section 103
-      Sec 103
-      Section 103A
-      Section 124A
-      Section 43-B
+      DETECT SECTION NUMBER
     */
 
     const sectionMatch = q.match(
@@ -138,15 +128,6 @@ export default async function handler(req, res) {
 
     /*
       EXACT ACT + SECTION SEARCH
-
-      This is the safest method.
-
-      Example:
-      BNS Section 103
-
-      becomes:
-
-      /api/v1/bns/section/103
     */
 
     if (selectedAct && sectionNumber) {
@@ -162,7 +143,7 @@ export default async function handler(req, res) {
 
 
       /*
-        Exact provision found.
+        EXACT PROVISION FOUND
       */
 
       if (
@@ -178,6 +159,104 @@ export default async function handler(req, res) {
           exactData.url ||
           `https://indiacode.ecourtsindia.com/${selectedAct.id}/section/${sectionNumber}/`;
 
+
+        /*
+          VERIFIED JUDGMENTS CONNECTED
+          TO THIS PROVISION
+        */
+
+        const judgments =
+          Array.isArray(exactData.judgments)
+            ? exactData.judgments.map(judgment => ({
+
+                verified: true,
+
+                caseName:
+                  judgment.title ||
+                  null,
+
+                court:
+                  judgment.court_name ||
+                  judgment.court ||
+                  null,
+
+                courtLevel:
+                  judgment.court ||
+                  null,
+
+                date:
+                  judgment.date ||
+                  null,
+
+                citation:
+                  judgment.citation ||
+                  null,
+
+                cnr:
+                  judgment.cnr ||
+                  null,
+
+                precedentialValue:
+                  judgment.precedential_value ||
+                  null,
+
+                courtMarking:
+                  judgment.court_marking ||
+                  null,
+
+                ratio:
+                  judgment.ratio_decidendi ||
+                  null,
+
+                appliedToSection:
+                  judgment.applied_to_this_section ||
+                  null,
+
+                basis:
+                  judgment.basis ||
+                  null,
+
+                decidedUnder:
+                  judgment.decided_under ||
+                  null,
+
+                source:
+                  judgment.url ||
+                  null
+
+              }))
+            : [];
+
+
+        /*
+          STATUTORY TRANSITION / MAPPING
+        */
+
+        const correspondingProvisions =
+          Array.isArray(exactData.corresponds_to)
+            ? exactData.corresponds_to.map(item => ({
+
+                act:
+                  item.act ||
+                  null,
+
+                section:
+                  item.number ||
+                  null,
+
+                relation:
+                  item.relation ||
+                  null
+
+              }))
+            : [];
+
+
+        /*
+          RETURN VERIFIED SECTION
+          + VERIFIED JUDGMENTS
+          + CORRESPONDING PROVISIONS
+        */
 
         return res.status(200).json({
 
@@ -203,6 +282,9 @@ export default async function handler(req, res) {
                 exactData.act?.short_title ||
                 selectedAct.name,
 
+              actId:
+                selectedAct.id,
+
               section:
                 section.number ||
                 sectionNumber,
@@ -216,7 +298,14 @@ export default async function handler(req, res) {
                 null,
 
               url:
-                sourceUrl
+                sourceUrl,
+
+              judgments,
+
+              judgmentCount:
+                judgments.length,
+
+              correspondingProvisions
 
             }
 
@@ -228,7 +317,7 @@ export default async function handler(req, res) {
 
 
       /*
-        Exact Act + Section does not exist.
+        EXACT ACT + SECTION NOT FOUND
       */
 
       if (exactResponse.status === 404) {
@@ -258,16 +347,7 @@ export default async function handler(req, res) {
     /*
       GENERAL LEGAL SECTION SEARCH
 
-      This allows LawBot to search Acts that are
-      NOT manually listed in actMap.
-
-      Examples:
-
-      Income Tax Act Section 10
-      Consumer Protection Act Section 35
-      Companies Act Section 135
-      Motor Vehicles Act Section 166
-      Arbitration Act Section 34
+      Used for Acts not manually listed above.
     */
 
     const apiUrl =
@@ -312,8 +392,7 @@ export default async function handler(req, res) {
 
 
     /*
-      Convert search results into
-      LawBot section objects.
+      CONVERT SEARCH RESULTS
     */
 
     const sections =
@@ -323,11 +402,6 @@ export default async function handler(req, res) {
 
         let section = null;
 
-
-        /*
-          Extract Act ID and section number
-          from the permanent source URL.
-        */
 
         if (result.url) {
 
@@ -366,6 +440,8 @@ export default async function handler(req, res) {
             actId ||
             null,
 
+          actId,
+
           section:
             result.section ||
             result.number ||
@@ -382,7 +458,13 @@ export default async function handler(req, res) {
 
           url:
             result.url ||
-            null
+            null,
+
+          judgments: [],
+
+          judgmentCount: 0,
+
+          correspondingProvisions: []
 
         };
 
@@ -390,7 +472,7 @@ export default async function handler(req, res) {
 
 
     /*
-      Return verified search results.
+      RETURN GENERAL SEARCH RESULTS
     */
 
     return res.status(200).json({
@@ -414,7 +496,6 @@ export default async function handler(req, res) {
   } catch (error) {
 
     console.error(error);
-
 
     return res.status(500).json({
 
