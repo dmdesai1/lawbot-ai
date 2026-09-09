@@ -637,6 +637,49 @@ async function searchJudgments(search) {
 
 
 /*
+  VIEW ALL JUDGMENTS
+*/
+
+function addViewAllHandler() {
+
+  const viewAllButton =
+    document.getElementById("viewAllJudgments");
+
+  if (viewAllButton) {
+
+    viewAllButton.addEventListener(
+      "click",
+      function() {
+
+        const hiddenJudgments =
+          answerArea.querySelectorAll(
+            'div[data-judgment-hidden="true"]'
+          );
+
+        hiddenJudgments.forEach(
+          function(card) {
+
+            card.style.display = "";
+
+            card.removeAttribute(
+              "data-judgment-hidden"
+            );
+
+          }
+        );
+
+        viewAllButton.style.display =
+          "none";
+
+      }
+    );
+
+  }
+
+}
+
+
+/*
   DISPLAY JUDGMENTS
 */
 
@@ -710,152 +753,165 @@ function showJudgments(data,search) {
 
 
   const cards =
-    data.judgments.map(function(j) {
+    data.judgments.map(
+      function(j,index) {
 
-      const caseName =
-        escapeHTML(
-          j.caseName ||
-          "Unnamed judgment"
-        );
+        const caseName =
+          escapeHTML(
+            j.caseName ||
+            "Unnamed judgment"
+          );
 
-      const court =
-        escapeHTML(
-          j.court ||
-          "Court not specified"
-        );
+        const court =
+          escapeHTML(
+            j.court ||
+            "Court not specified"
+          );
 
-      const date =
-        escapeHTML(
-          j.date ||
-          "Date unavailable"
-        );
+        const date =
+          escapeHTML(
+            j.date ||
+            "Date unavailable"
+          );
 
-      const citation =
-        escapeHTML(
-          j.citation ||
-          "Citation unavailable"
-        );
+        const citation =
+          escapeHTML(
+            j.citation ||
+            "Citation unavailable"
+          );
 
-      const cnr =
-        escapeHTML(
-          j.cnr ||
-          ""
-        );
+        const cnr =
+          escapeHTML(
+            j.cnr ||
+            ""
+          );
 
-      const source =
-        escapeHTML(
-          j.source ||
-          "#"
-        );
+        const source =
+          escapeHTML(
+            j.source ||
+            "#"
+          );
 
 
-      return `
+        return `
 
-        <div style="
-          border:1px solid #e4e7ec;
-          border-radius:14px;
-          padding:18px;
-          margin-bottom:14px;
-          background:white;
-          box-shadow:0 2px 8px rgba(16,24,40,.05);
-        ">
+          <div
+            class="judgment-card"
+            data-judgment-hidden="${
+              index >= 3 ? "true" : "false"
+            }"
+            style="
+              ${
+                index >= 3
+                  ? "display:none;"
+                  : ""
+              }
+              border:1px solid #e4e7ec;
+              border-radius:14px;
+              padding:18px;
+              margin-bottom:14px;
+              background:white;
+              box-shadow:0 2px 8px rgba(16,24,40,.05);
+            "
+          >
 
-          <div style="
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:10px;
-            flex-wrap:wrap;
-            margin-bottom:12px;
-          ">
-
-            <span class="verified">
-              ✓ Verified Judgment
-            </span>
-
-            <span style="
-              font-size:12px;
-              color:#667085;
+            <div style="
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              gap:10px;
+              flex-wrap:wrap;
+              margin-bottom:12px;
             ">
-              ${date}
-            </span>
+
+              <span class="verified">
+                ✓ Verified Judgment
+              </span>
+
+              <span style="
+                font-size:12px;
+                color:#667085;
+              ">
+                ${date}
+              </span>
+
+            </div>
+
+
+            <div style="
+              font-size:18px;
+              font-weight:700;
+              line-height:1.4;
+              color:#101828;
+              margin-bottom:9px;
+            ">
+              ${caseName}
+            </div>
+
+
+            <div style="
+              color:#475467;
+              font-size:14px;
+              margin-bottom:7px;
+            ">
+              🏛️ ${court}
+            </div>
+
+
+            <div style="
+              color:#475467;
+              font-size:14px;
+              margin-bottom:7px;
+            ">
+              📚 ${citation}
+            </div>
+
+
+            ${
+              cnr
+                ? `
+                  <div style="
+                    color:#667085;
+                    font-size:12px;
+                    margin-top:8px;
+                  ">
+                    CNR: ${cnr}
+                  </div>
+                `
+                : ""
+            }
+
+
+            <div style="
+              margin-top:15px;
+            ">
+
+              <a
+                href="${source}"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="
+                  display:inline-block;
+                  background:#101828;
+                  color:white;
+                  text-decoration:none;
+                  padding:10px 14px;
+                  border-radius:9px;
+                  font-size:13px;
+                  font-weight:600;
+                "
+              >
+                View Original Judgment ↗
+              </a>
+
+            </div>
 
           </div>
 
+        `;
 
-          <div style="
-            font-size:18px;
-            font-weight:700;
-            line-height:1.4;
-            color:#101828;
-            margin-bottom:9px;
-          ">
-            ${caseName}
-          </div>
-
-
-          <div style="
-            color:#475467;
-            font-size:14px;
-            margin-bottom:7px;
-          ">
-            🏛️ ${court}
-          </div>
-
-
-          <div style="
-            color:#475467;
-            font-size:14px;
-            margin-bottom:7px;
-          ">
-            📚 ${citation}
-          </div>
-
-
-          ${
-            cnr
-              ? `
-                <div style="
-                  color:#667085;
-                  font-size:12px;
-                  margin-top:8px;
-                ">
-                  CNR: ${cnr}
-                </div>
-              `
-              : ""
-          }
-
-
-          <div style="
-            margin-top:15px;
-          ">
-
-            <a
-              href="${source}"
-              target="_blank"
-              rel="noopener noreferrer"
-              style="
-                display:inline-block;
-                background:#101828;
-                color:white;
-                text-decoration:none;
-                padding:10px 14px;
-                border-radius:9px;
-                font-size:13px;
-                font-weight:600;
-              "
-            >
-              View Original Judgment ↗
-            </a>
-
-          </div>
-
-        </div>
-
-      `;
-
-    }).join("");
+      }
+    ).join("");
 
 
   answerArea.innerHTML = `
@@ -900,7 +956,14 @@ function showJudgments(data,search) {
 
         ${
           search.section
-            ? `<strong>Section ${escapeHTML(search.section)}</strong><br>`
+            ? `
+              <strong>
+                Section ${escapeHTML(
+                  search.section
+                )}
+              </strong>
+              <br>
+            `
             : ""
         }
 
@@ -911,6 +974,30 @@ function showJudgments(data,search) {
 
 
       ${cards}
+
+
+      ${
+        data.judgments.length > 3
+          ? `
+            <button
+              id="viewAllJudgments"
+              style="
+                width:100%;
+                border:1px solid #d0d5dd;
+                background:white;
+                color:#101828;
+                padding:11px 15px;
+                border-radius:9px;
+                cursor:pointer;
+                font-weight:700;
+                margin-bottom:14px;
+              "
+            >
+              👁️ View All ${data.judgments.length} Judgments
+            </button>
+          `
+          : ""
+      }
 
 
       <button
@@ -941,6 +1028,9 @@ function showJudgments(data,search) {
     );
 
 
+  addViewAllHandler();
+
+
   answerArea.scrollIntoView({
     behavior:"smooth",
     block:"start"
@@ -957,12 +1047,12 @@ async function showAIAnswer(query) {
 
   try {
 
+    let sectionData = null;
+
+
     /*
       GET VERIFIED SECTION
     */
-
-    let sectionData = null;
-
 
     const sectionResponse =
       await fetch(
@@ -1044,9 +1134,16 @@ async function showAIAnswer(query) {
         );
 
 
+    /*
+      RESULT VARIABLES
+    */
+
     let verifiedSection = "";
+
     let connectedJudgments = "";
-let provisionMappings = "";
+
+    let provisionMappings = "";
+
 
     /*
       BUILD VERIFIED SECTION
@@ -1061,73 +1158,125 @@ let provisionMappings = "";
 
       const section =
         sectionData.sections[0];
-const correspondingProvisions =
-  Array.isArray(section.correspondingProvisions)
-    ? section.correspondingProvisions
-    : [];
 
-if (correspondingProvisions.length > 0) {
 
-  provisionMappings = `
-    <div style="
-      background:#fff8e1;
-      border:1px solid #f1d47a;
-      border-radius:12px;
-      padding:16px;
-      margin-bottom:18px;
-    ">
-      <div style="
-        font-size:17px;
-        font-weight:800;
-        margin-bottom:10px;
-      ">
-        🔄 Corresponding Provision
-      </div>
+      /*
+        CORRESPONDING PROVISIONS
+      */
 
-      ${correspondingProvisions.map(function(p) {
-        return `
+      const correspondingProvisions =
+        Array.isArray(
+          section.correspondingProvisions
+        )
+          ? section.correspondingProvisions
+          : [];
+
+
+      if (
+        correspondingProvisions.length > 0
+      ) {
+
+        provisionMappings = `
+
           <div style="
-            background:white;
-            border:1px solid #e4e7ec;
-            border-radius:10px;
-            padding:13px;
+            background:#fff8e1;
+            border:1px solid #f1d47a;
+            border-radius:12px;
+            padding:16px;
+            margin-bottom:18px;
           ">
-            <strong>
-              ${escapeHTML(p.act || "Indian Law")}
-            </strong>
+
+            <div style="
+              font-size:17px;
+              font-weight:800;
+              margin-bottom:10px;
+            ">
+              🔄 Corresponding Provision
+            </div>
+
 
             ${
-              p.section
-                ? ` — Section ${escapeHTML(String(p.section))}`
-                : ""
+              correspondingProvisions
+                .map(
+                  function(p) {
+
+                    return `
+
+                      <div style="
+                        background:white;
+                        border:1px solid #e4e7ec;
+                        border-radius:10px;
+                        padding:13px;
+                        margin-top:10px;
+                      ">
+
+                        <strong>
+                          ${escapeHTML(
+                            p.act ||
+                            "Indian Law"
+                          )}
+                        </strong>
+
+
+                        ${
+                          p.section
+                            ? `
+                              — Section
+                              ${escapeHTML(
+                                String(
+                                  p.section
+                                )
+                              )}
+                            `
+                            : ""
+                        }
+
+
+                        ${
+                          p.relation
+                            ? `
+                              <div style="
+                                margin-top:6px;
+                                font-size:13px;
+                                color:#667085;
+                              ">
+                                Relationship:
+                                ${escapeHTML(
+                                  p.relation
+                                )}
+                              </div>
+                            `
+                            : ""
+                        }
+
+                      </div>
+
+                    `;
+
+                  }
+                )
+                .join("")
             }
 
-            ${
-              p.relation
-                ? `<div style="
-                    margin-top:6px;
-                    font-size:13px;
-                    color:#667085;
-                  ">
-                    Relationship: ${escapeHTML(p.relation)}
-                  </div>`
-                : ""
-            }
+
+            <div style="
+              margin-top:10px;
+              font-size:12px;
+              color:#667085;
+            ">
+              Mapping provided by the connected legal database.
+            </div>
+
           </div>
+
         `;
-      }).join("")}
 
-      <div style="
-        margin-top:10px;
-        font-size:12px;
-        color:#667085;
-      ">
-        Mapping provided by the connected legal database.
-      </div>
-    </div>
-  `;
+      }
 
-}
+
+      /*
+        VERIFIED PROVISION CARD
+      */
 
       verifiedSection = `
 
@@ -1163,9 +1312,14 @@ if (correspondingProvisions.length > 0) {
 
             ${
               section.section
-                ? ` — Section ${escapeHTML(
-                    String(section.section)
-                  )}`
+                ? `
+                  — Section
+                  ${escapeHTML(
+                    String(
+                      section.section
+                    )
+                  )}
+                `
                 : ""
             }
 
@@ -1248,271 +1402,215 @@ if (correspondingProvisions.length > 0) {
 
 
       /*
-        GET CONNECTED JUDGMENTS
+        CONNECTED JUDGMENTS
       */
 
       const judgments =
-        Array.isArray(section.judgments)
+        Array.isArray(
+          section.judgments
+        )
           ? section.judgments
           : [];
-const correspondingProvisions =
-  Array.isArray(section.correspondingProvisions)
-    ? section.correspondingProvisions
-    : [];
 
-let provisionMappings = "";
-
-if (correspondingProvisions.length > 0) {
-
-  provisionMappings = `
-    <div style="
-      background:#fff8e1;
-      border:1px solid #f1d47a;
-      border-radius:12px;
-      padding:16px;
-      margin-bottom:18px;
-    ">
-
-      <div style="
-        font-size:17px;
-        font-weight:800;
-        margin-bottom:10px;
-      ">
-        🔄 Corresponding Provision
-      </div>
-
-      ${correspondingProvisions.map(function(p) {
-
-        return `
-          <div style="
-            background:white;
-            border:1px solid #e4e7ec;
-            border-radius:10px;
-            padding:13px;
-            margin-top:10px;
-          ">
-
-            <strong>
-              ${escapeHTML(p.act || "Indian Law")}
-            </strong>
-
-            ${
-              p.section
-                ? ` — Section ${escapeHTML(String(p.section))}`
-                : ""
-            }
-
-            ${
-              p.relation
-                ? `
-                  <div style="
-                    margin-top:6px;
-                    font-size:13px;
-                    color:#667085;
-                  ">
-                    Relationship: ${escapeHTML(p.relation)}
-                  </div>
-                `
-                : ""
-            }
-
-          </div>
-        `;
-
-      }).join("")}
-
-      <div style="
-        margin-top:10px;
-        font-size:12px;
-        color:#667085;
-      ">
-        Mapping provided by the connected legal database.
-      </div>
-
-    </div>
-  `;
-
-  }
 
       if (judgments.length > 0) {
 
         const judgmentCards =
-          judgments.map(function(j, index) {
+          judgments.map(
+            function(j,index) {
 
-            const caseName =
-              escapeHTML(
-                j.caseName ||
-                "Unnamed judgment"
-              );
+              const caseName =
+                escapeHTML(
+                  j.caseName ||
+                  "Unnamed judgment"
+                );
 
-            const court =
-              escapeHTML(
-                j.court ||
-                j.courtLevel ||
-                "Court not specified"
-              );
+              const court =
+                escapeHTML(
+                  j.court ||
+                  j.courtLevel ||
+                  "Court not specified"
+                );
 
-            const date =
-              escapeHTML(
-                j.date ||
-                "Date unavailable"
-              );
+              const date =
+                escapeHTML(
+                  j.date ||
+                  "Date unavailable"
+                );
 
-            const citation =
-              escapeHTML(
-                j.citation ||
-                "Citation unavailable"
-              );
+              const citation =
+                escapeHTML(
+                  j.citation ||
+                  "Citation unavailable"
+                );
 
-            const cnr =
-              escapeHTML(
-                j.cnr ||
-                ""
-              );
+              const cnr =
+                escapeHTML(
+                  j.cnr ||
+                  ""
+                );
 
-            const ratio =
-              escapeHTML(
-                j.ratio ||
-                ""
-              );
+              const ratio =
+                escapeHTML(
+                  j.ratio ||
+                  ""
+                );
 
-            const source =
-              escapeHTML(
-                j.source ||
-                "#"
-              );
+              const source =
+                escapeHTML(
+                  j.source ||
+                  "#"
+                );
 
 
-            return `
+              return `
 
-              <div style="
-  ${index >= 3 ? "display:none;" : ""}
-  border:1px solid #e4e7ec;
-                border-radius:14px;
-                padding:18px;
-                margin-bottom:14px;
-                background:white;
-                box-shadow:0 2px 8px rgba(16,24,40,.05);
-              ">
+                <div
+                  class="judgment-card"
+                  data-judgment-hidden="${
+                    index >= 3
+                      ? "true"
+                      : "false"
+                  }"
+                  style="
+                    ${
+                      index >= 3
+                        ? "display:none;"
+                        : ""
+                    }
+                    border:1px solid #e4e7ec;
+                    border-radius:14px;
+                    padding:18px;
+                    margin-bottom:14px;
+                    background:white;
+                    box-shadow:0 2px 8px rgba(16,24,40,.05);
+                  "
+                >
 
-                <div style="
-                  display:flex;
-                  justify-content:space-between;
-                  align-items:center;
-                  gap:10px;
-                  flex-wrap:wrap;
-                  margin-bottom:12px;
-                ">
-
-                  <span class="verified">
-                    ✓ Verified Judgment
-                  </span>
-
-                  <span style="
-                    font-size:12px;
-                    color:#667085;
+                  <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    gap:10px;
+                    flex-wrap:wrap;
+                    margin-bottom:12px;
                   ">
-                    ${date}
-                  </span>
 
-                </div>
+                    <span class="verified">
+                      ✓ Verified Judgment
+                    </span>
 
+                    <span style="
+                      font-size:12px;
+                      color:#667085;
+                    ">
+                      ${date}
+                    </span>
 
-                <div style="
-                  font-size:17px;
-                  font-weight:700;
-                  line-height:1.4;
-                  color:#101828;
-                  margin-bottom:9px;
-                ">
-                  ${caseName}
-                </div>
+                  </div>
 
 
-                <div style="
-                  color:#475467;
-                  font-size:14px;
-                  margin-bottom:7px;
-                ">
-                  🏛️ ${court}
-                </div>
+                  <div style="
+                    font-size:17px;
+                    font-weight:700;
+                    line-height:1.4;
+                    color:#101828;
+                    margin-bottom:9px;
+                  ">
+                    ${caseName}
+                  </div>
 
 
-                <div style="
-                  color:#475467;
-                  font-size:14px;
-                  margin-bottom:7px;
-                ">
-                  📚 ${citation}
-                </div>
+                  <div style="
+                    color:#475467;
+                    font-size:14px;
+                    margin-bottom:7px;
+                  ">
+                    🏛️ ${court}
+                  </div>
 
 
-                ${
-                  ratio
-                    ? `
-                      <div style="
-                        margin-top:12px;
-                        padding:12px;
-                        background:#f8fafc;
+                  <div style="
+                    color:#475467;
+                    font-size:14px;
+                    margin-bottom:7px;
+                  ">
+                    📚 ${citation}
+                  </div>
+
+
+                  ${
+                    ratio
+                      ? `
+                        <div style="
+                          margin-top:12px;
+                          padding:12px;
+                          background:#f8fafc;
+                          border-radius:9px;
+                          font-size:13px;
+                          line-height:1.6;
+                          color:#475467;
+                        ">
+
+                          <strong>
+                            Ratio / Holding:
+                          </strong>
+
+                          <br>
+
+                          ${ratio}
+
+                        </div>
+                      `
+                      : ""
+                  }
+
+
+                  ${
+                    cnr
+                      ? `
+                        <div style="
+                          color:#667085;
+                          font-size:12px;
+                          margin-top:9px;
+                        ">
+                          CNR: ${cnr}
+                        </div>
+                      `
+                      : ""
+                  }
+
+
+                  <div style="
+                    margin-top:15px;
+                  ">
+
+                    <a
+                      href="${source}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style="
+                        display:inline-block;
+                        background:#101828;
+                        color:white;
+                        text-decoration:none;
+                        padding:10px 14px;
                         border-radius:9px;
                         font-size:13px;
-                        line-height:1.6;
-                        color:#475467;
-                      ">
-                        <strong>
-                          Ratio / Holding:
-                        </strong><br>
-                        ${ratio}
-                      </div>
-                    `
-                    : ""
-                }
+                        font-weight:600;
+                      "
+                    >
+                      View Original Judgment ↗
+                    </a>
 
-
-                ${
-                  cnr
-                    ? `
-                      <div style="
-                        color:#667085;
-                        font-size:12px;
-                        margin-top:9px;
-                      ">
-                        CNR: ${cnr}
-                      </div>
-                    `
-                    : ""
-                }
-
-
-                <div style="
-                  margin-top:15px;
-                ">
-
-                  <a
-                    href="${source}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style="
-                      display:inline-block;
-                      background:#101828;
-                      color:white;
-                      text-decoration:none;
-                      padding:10px 14px;
-                      border-radius:9px;
-                      font-size:13px;
-                      font-weight:600;
-                    "
-                  >
-                    View Original Judgment ↗
-                  </a>
+                  </div>
 
                 </div>
 
-              </div>
+              `;
 
-            `;
-
-          }).join("");
+            }
+          ).join("");
 
 
         connectedJudgments = `
@@ -1556,30 +1654,34 @@ if (correspondingProvisions.length > 0) {
 
             ${judgmentCards}
 
-${
-  judgments.length > 3
-    ? `
-      <button
-        id="viewAllJudgments"
-        style="
-          width:100%;
-          border:1px solid #d0d5dd;
-          background:white;
-          color:#101828;
-          padding:11px 15px;
-          border-radius:9px;
-          cursor:pointer;
-          font-weight:700;
-          margin-bottom:14px;
-        "
-      >
-        👁️ View All ${judgments.length} Judgments
-      </button>
-    `
-    : ""
-}
 
-</div>
+            ${
+              judgments.length > 3
+                ? `
+                  <button
+                    id="viewAllJudgments"
+                    style="
+                      width:100%;
+                      border:1px solid #d0d5dd;
+                      background:white;
+                      color:#101828;
+                      padding:11px 15px;
+                      border-radius:9px;
+                      cursor:pointer;
+                      font-weight:700;
+                      margin-bottom:14px;
+                    "
+                  >
+                    👁️ View All
+                    ${judgments.length}
+                    Judgments
+                  </button>
+                `
+                : ""
+            }
+
+          </div>
+
         `;
 
       } else {
@@ -1640,10 +1742,14 @@ ${
         ? `
           <div class="source">
 
-            <span>📗 Source</span>
+            <span>
+              📗 Source
+            </span>
 
             <a
-              href="${escapeHTML(data.source)}"
+              href="${escapeHTML(
+                data.source
+              )}"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -1687,7 +1793,8 @@ ${
 
 
         ${verifiedSection}
-${provisionMappings}
+
+        ${provisionMappings}
 
         ${connectedJudgments}
 
@@ -1770,12 +1877,15 @@ ${provisionMappings}
             this.textContent =
               "✓ Copied";
 
-            setTimeout(() => {
+            setTimeout(
+              () => {
 
-              this.textContent =
-                "📋 Copy Answer";
+                this.textContent =
+                  "📋 Copy Answer";
 
-            },1500);
+              },
+              1500
+            );
 
           } catch {
 
@@ -1798,30 +1908,14 @@ ${provisionMappings}
         "click",
         newSearch
       );
-const viewAllButton =
-  document.getElementById("viewAllJudgments");
 
-if (viewAllButton) {
 
-  viewAllButton.addEventListener(
-    "click",
-    function() {
+    /*
+      VIEW ALL
+    */
 
-      const hiddenJudgments =
-        answerArea.querySelectorAll(
-          'div[style*="display:none;"]'
-        );
+    addViewAllHandler();
 
-      hiddenJudgments.forEach(function(card) {
-        card.style.display = "";
-      });
-
-      viewAllButton.style.display = "none";
-
-    }
-  );
-
-}
 
     /*
       SCROLL
