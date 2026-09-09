@@ -493,144 +493,6 @@ const input = document.getElementById("queryInput");
 const button = document.getElementById("searchBtn");
 const answerArea = document.getElementById("answerArea");
 
-async function searchLaw() {
-
-  const query = input.value.trim();
-
-  if (!query) {
-    input.focus();
-    return;
-  }
-
-  button.disabled = true;
-  button.textContent = "Researching...";
-
-  answerArea.innerHTML = `
-    <div class="answer">
-      <div class="loading">
-        <span class="dot"></span>
-        <span>LawBot is researching your question...</span>
-      </div>
-    </div>
-  `;
-
-  try {
-
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        query: query
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Something went wrong.");
-    }
-
-        const rawAnswer = String(data.answer || "");
-
-    // Clean and format the AI answer
-    const safeAnswer = rawAnswer
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/^### (.*)$/gm, "<h3>$1</h3>")
-      .replace(/^## (.*)$/gm, "<h2>$1</h2>")
-      .replace(/\n/g, "<br>");
-
-    const verifiedBadge = data.verified
-      ? `<span class="verified">✓ Verified Source</span>`
-      : `<span class="verified" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;">AI Answer</span>`;
-
-    const source = data.source
-      ? `
-        <div class="source">
-          <span>📚 Source</span>
-          <a href="${data.source}" target="_blank" rel="noopener">
-            View Original Legal Source ↗
-          </a>
-        </div>
-      `
-      : "";
-
-    answerArea.innerHTML = `
-      <div class="answer">
-
-        <div class="answer-header">
-          <div>
-            <div class="answer-title">⚖️ LawBot AI</div>
-            <div style="font-size:13px;color:#667085;margin-top:4px;">
-              Legal Research Result
-            </div>
-          </div>
-
-          ${verifiedBadge}
-        </div>
-
-        <div style="
-          background:#f8fafc;
-          border:1px solid #e4e7ec;
-          border-radius:12px;
-          padding:20px;
-          font-size:15px;
-        ">
-          ${safeAnswer}
-        </div>
-
-        ${source}
-
-        <div style="
-          display:flex;
-          gap:10px;
-          margin-top:18px;
-          flex-wrap:wrap;
-        ">
-          <button
-            id="copyAnswer"
-            style="
-              border:1px solid #d0d5dd;
-              background:white;
-              padding:9px 14px;
-              border-radius:9px;
-              cursor:pointer;
-              font-weight:600;
-            "
-          >
-            📋 Copy Answer
-          </button>
-
-          <button
-            id="newSearch"
-            style="
-              border:none;
-              background:#101828;
-              color:white;
-              padding:9px 14px;
-              border-radius:9px;
-              cursor:pointer;
-              font-weight:600;
-            "
-          >
-            🔎 New Search
-          </button>
-        </div>
-
-      </div>
-    `;
-
-    document.getElementById("copyAnswer").addEventListener("click", async function() {
-<script>
-
-const input = document.getElementById("queryInput");
-const button = document.getElementById("searchBtn");
-const answerArea = document.getElementById("answerArea");
-
 function escapeHTML(text) {
   return String(text || "")
     .replace(/&/g, "&amp;")
@@ -641,7 +503,7 @@ function escapeHTML(text) {
 }
 
 
-// Detect judgment searches
+// Detect whether the user wants judgments
 function detectJudgmentSearch(query) {
 
   const q = query.toLowerCase();
@@ -650,6 +512,7 @@ function detectJudgmentSearch(query) {
 
   if (
     q.includes("negotiable instruments act") ||
+    q.includes("negotiable instrument act") ||
     q.includes("ni act") ||
     q.includes("n.i. act")
   ) {
@@ -671,7 +534,7 @@ function detectJudgmentSearch(query) {
 
   if (act && sectionMatch && wantsJudgments) {
     return {
-      act,
+      act: act,
       section: sectionMatch[1],
       court: q.includes("supreme court") ? "SC" : null
     };
@@ -681,7 +544,7 @@ function detectJudgmentSearch(query) {
 }
 
 
-// Search verified judgments
+// Call verified judgment API
 async function searchJudgments(search) {
 
   const response = await fetch("/api/judgments", {
@@ -695,33 +558,51 @@ async function searchJudgments(search) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || "Judgment search failed");
+    throw new Error(
+      data.error || "Judgment search failed"
+    );
   }
 
   return data;
 }
 
 
-// Display judgment cards
+// Display verified judgments
 function showJudgments(data, search) {
 
-  if (!data.judgments || data.judgments.length === 0) {
+  if (
+    !data.judgments ||
+    data.judgments.length === 0
+  ) {
 
     answerArea.innerHTML = `
       <div class="answer">
 
         <div class="answer-header">
+
           <div>
-            <div class="answer-title">⚖️ LawBot AI</div>
-            <div style="font-size:13px;color:#667085;margin-top:4px;">
-              Judgment Search
+            <div class="answer-title">
+              ⚖️ LawBot AI
+            </div>
+
+            <div style="
+              font-size:13px;
+              color:#667085;
+              margin-top:4px;
+            ">
+              Verified Judgment Search
             </div>
           </div>
 
           <span class="verified"
-            style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;">
-            ⚠️ No verified judgment found
+            style="
+              background:#fff7ed;
+              color:#c2410c;
+              border-color:#fed7aa;
+            ">
+            ⚠️ No Verified Judgment
           </span>
+
         </div>
 
         <div style="
@@ -731,7 +612,11 @@ function showJudgments(data, search) {
           padding:20px;
           font-size:15px;
         ">
-          No matching judgment was found in the connected legal database.
+          No matching judgment was found in the
+          connected legal database.
+
+          <br><br>
+
           LawBot will not invent a case citation.
         </div>
 
@@ -742,14 +627,26 @@ function showJudgments(data, search) {
   }
 
 
-  const cards = data.judgments.map(j => {
+  const cards = data.judgments.map(function(j) {
 
-    const caseName = escapeHTML(j.caseName || "Unnamed judgment");
-    const court = escapeHTML(j.court || "Court not specified");
-    const date = escapeHTML(j.date || "Date unavailable");
-    const citation = escapeHTML(j.citation || "Citation unavailable");
-    const cnr = escapeHTML(j.cnr || "");
-    const source = j.source || "#";
+    const caseName =
+      escapeHTML(j.caseName || "Unnamed judgment");
+
+    const court =
+      escapeHTML(j.court || "Court not specified");
+
+    const date =
+      escapeHTML(j.date || "Date unavailable");
+
+    const citation =
+      escapeHTML(j.citation || "Citation unavailable");
+
+    const cnr =
+      escapeHTML(j.cnr || "");
+
+    const source =
+      escapeHTML(j.source || "#");
+
 
     return `
       <div style="
@@ -764,9 +661,10 @@ function showJudgments(data, search) {
         <div style="
           display:flex;
           justify-content:space-between;
+          align-items:center;
           gap:10px;
           flex-wrap:wrap;
-          margin-bottom:10px;
+          margin-bottom:12px;
         ">
 
           <span class="verified">
@@ -782,30 +680,35 @@ function showJudgments(data, search) {
 
         </div>
 
+
         <div style="
           font-size:18px;
           font-weight:700;
+          line-height:1.4;
           color:#101828;
-          margin-bottom:8px;
+          margin-bottom:9px;
         ">
           ${caseName}
         </div>
 
-        <div style="
-          color:#475467;
-          font-size:14px;
-          margin-bottom:6px;
-        ">
-          🏛️ ${court}
-        </div>
 
         <div style="
           color:#475467;
           font-size:14px;
-          margin-bottom:6px;
+          margin-bottom:7px;
+        ">
+          🏛️ ${court}
+        </div>
+
+
+        <div style="
+          color:#475467;
+          font-size:14px;
+          margin-bottom:7px;
         ">
           📚 ${citation}
         </div>
+
 
         ${
           cnr
@@ -821,9 +724,13 @@ function showJudgments(data, search) {
             : ""
         }
 
-        <div style="margin-top:14px;">
+
+        <div style="
+          margin-top:15px;
+        ">
+
           <a
-            href="${escapeHTML(source)}"
+            href="${source}"
             target="_blank"
             rel="noopener noreferrer"
             style="
@@ -831,7 +738,7 @@ function showJudgments(data, search) {
               background:#101828;
               color:white;
               text-decoration:none;
-              padding:9px 14px;
+              padding:10px 14px;
               border-radius:9px;
               font-size:13px;
               font-weight:600;
@@ -839,6 +746,7 @@ function showJudgments(data, search) {
           >
             View Original Judgment ↗
           </a>
+
         </div>
 
       </div>
@@ -852,7 +760,10 @@ function showJudgments(data, search) {
       <div class="answer-header">
 
         <div>
-          <div class="answer-title">⚖️ LawBot AI</div>
+
+          <div class="answer-title">
+            ⚖️ LawBot AI
+          </div>
 
           <div style="
             font-size:13px;
@@ -861,6 +772,7 @@ function showJudgments(data, search) {
           ">
             Verified Judgment Search
           </div>
+
         </div>
 
         <span class="verified">
@@ -868,6 +780,7 @@ function showJudgments(data, search) {
         </span>
 
       </div>
+
 
       <div style="
         background:#f8fafc;
@@ -878,11 +791,21 @@ function showJudgments(data, search) {
         font-size:14px;
         color:#475467;
       ">
-        Showing judgments found in the connected legal database
-        for Section ${escapeHTML(search.section)}.
+
+        <strong>
+          Section ${escapeHTML(search.section)}
+        </strong>
+
+        <br>
+
+        Judgments found in the connected
+        legal database.
+
       </div>
 
+
       ${cards}
+
 
       <button
         id="newSearch"
@@ -904,24 +827,236 @@ function showJudgments(data, search) {
   `;
 
 
-  document.getElementById("newSearch").addEventListener(
-    "click",
-    function() {
+  document
+    .getElementById("newSearch")
+    .addEventListener("click", function() {
+
       input.value = "";
+
       input.focus();
+
       answerArea.innerHTML = "";
 
       window.scrollTo({
-        top: 0,
-        behavior: "smooth"
+        top:0,
+        behavior:"smooth"
       });
-    }
-  );
+
+    });
 
 
   answerArea.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
+    behavior:"smooth",
+    block:"start"
+  });
+}
+
+
+// Normal AI answer
+async function showAIAnswer(query) {
+
+  const response = await fetch("/api/chat", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+      query:query
+    })
+  });
+
+
+  const data = await response.json();
+
+
+  if (!response.ok) {
+    throw new Error(
+      data.error || "Something went wrong."
+    );
+  }
+
+
+  const rawAnswer =
+    String(data.answer || "");
+
+
+  const safeAnswer =
+    rawAnswer
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+      .replace(/^### (.*)$/gm,"<h3>$1</h3>")
+      .replace(/^## (.*)$/gm,"<h2>$1</h2>")
+      .replace(/\n/g,"<br>");
+
+
+  const verifiedBadge =
+    data.verified
+
+      ? `<span class="verified">
+          ✓ Verified Source
+        </span>`
+
+      : `<span class="verified"
+          style="
+            background:#fff7ed;
+            color:#c2410c;
+            border-color:#fed7aa;
+          ">
+          AI Answer
+        </span>`;
+
+
+  const source =
+    data.source
+
+      ? `
+        <div class="source">
+
+          <span>📚 Source</span>
+
+          <a
+            href="${escapeHTML(data.source)}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View Original Legal Source ↗
+          </a>
+
+        </div>
+      `
+
+      : "";
+
+
+  answerArea.innerHTML = `
+    <div class="answer">
+
+      <div class="answer-header">
+
+        <div>
+
+          <div class="answer-title">
+            ⚖️ LawBot AI
+          </div>
+
+          <div style="
+            font-size:13px;
+            color:#667085;
+            margin-top:4px;
+          ">
+            Legal Research Result
+          </div>
+
+        </div>
+
+        ${verifiedBadge}
+
+      </div>
+
+
+      <div style="
+        background:#f8fafc;
+        border:1px solid #e4e7ec;
+        border-radius:12px;
+        padding:20px;
+        font-size:15px;
+        line-height:1.7;
+      ">
+        ${safeAnswer}
+      </div>
+
+
+      ${source}
+
+
+      <div style="
+        display:flex;
+        gap:10px;
+        margin-top:18px;
+        flex-wrap:wrap;
+      ">
+
+        <button
+          id="copyAnswer"
+          style="
+            border:1px solid #d0d5dd;
+            background:white;
+            padding:9px 14px;
+            border-radius:9px;
+            cursor:pointer;
+            font-weight:600;
+          "
+        >
+          📋 Copy Answer
+        </button>
+
+
+        <button
+          id="newSearch"
+          style="
+            border:none;
+            background:#101828;
+            color:white;
+            padding:9px 14px;
+            border-radius:9px;
+            cursor:pointer;
+            font-weight:600;
+          "
+        >
+          🔎 New Search
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  document
+    .getElementById("copyAnswer")
+    .addEventListener("click", async function() {
+
+      try {
+
+        await navigator.clipboard.writeText(
+          rawAnswer
+        );
+
+        this.textContent = "✓ Copied";
+
+      } catch {
+
+        this.textContent =
+          "Copy unavailable";
+
+      }
+
+    });
+
+
+  document
+    .getElementById("newSearch")
+    .addEventListener("click", function() {
+
+      input.value = "";
+
+      input.focus();
+
+      answerArea.innerHTML = "";
+
+      window.scrollTo({
+        top:0,
+        behavior:"smooth"
+      });
+
+    });
+
+
+  answerArea.scrollIntoView({
+    behavior:"smooth",
+    block:"start"
   });
 }
 
@@ -929,217 +1064,65 @@ function showJudgments(data, search) {
 // Main search
 async function searchLaw() {
 
-  const query = input.value.trim();
+  const query =
+    input.value.trim();
+
 
   if (!query) {
-    alert("Please enter a legal question.");
+
+    input.focus();
+
     return;
   }
 
+
   button.disabled = true;
-  button.textContent = "Searching...";
+
+  button.textContent =
+    "Researching...";
+
 
   answerArea.innerHTML = `
     <div class="answer">
+
       <div class="answer-title">
-        🔎 Searching legal sources...
+        🔎 Researching...
       </div>
 
       <p style="
         margin-top:10px;
         color:#667085;
       ">
-        LawBot is checking the connected legal database.
+        LawBot is checking legal sources.
       </p>
+
     </div>
   `;
 
 
   try {
 
-    const judgmentSearch = detectJudgmentSearch(query);
+    const judgmentSearch =
+      detectJudgmentSearch(query);
 
 
-    // Judgment search
     if (judgmentSearch) {
 
-      const data = await searchJudgments(judgmentSearch);
-
-      showJudgments(data, judgmentSearch);
-
-    }
-
-    // Normal LawBot AI search
-    else {
-
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          query
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || "Something went wrong."
+      const data =
+        await searchJudgments(
+          judgmentSearch
         );
-      }
 
-
-      const rawAnswer = String(data.answer || "");
-
-      const safeAnswer = rawAnswer
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-        .replace(/^### (.*)$/gm, "<h3>$1</h3>")
-        .replace(/^## (.*)$/gm, "<h2>$1</h2>")
-        .replace(/\n/g, "<br>");
-
-
-      const verifiedBadge = data.verified
-        ? `<span class="verified">✓ Verified Source</span>`
-        : `<span class="verified"
-            style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;">
-            AI Answer
-          </span>`;
-
-
-      const source = data.source
-        ? `
-          <div class="source">
-            <span>📚 Source</span>
-            <a href="${escapeHTML(data.source)}"
-               target="_blank"
-               rel="noopener noreferrer">
-              View Original Legal Source ↗
-            </a>
-          </div>
-        `
-        : "";
-
-
-      answerArea.innerHTML = `
-        <div class="answer">
-
-          <div class="answer-header">
-
-            <div>
-              <div class="answer-title">
-                ⚖️ LawBot AI
-              </div>
-
-              <div style="
-                font-size:13px;
-                color:#667085;
-                margin-top:4px;
-              ">
-                Legal Research Result
-              </div>
-            </div>
-
-            ${verifiedBadge}
-
-          </div>
-
-
-          <div style="
-            background:#f8fafc;
-            border:1px solid #e4e7ec;
-            border-radius:12px;
-            padding:20px;
-            font-size:15px;
-          ">
-            ${safeAnswer}
-          </div>
-
-          ${source}
-
-
-          <div style="
-            display:flex;
-            gap:10px;
-            margin-top:18px;
-            flex-wrap:wrap;
-          ">
-
-            <button
-              id="copyAnswer"
-              style="
-                border:1px solid #d0d5dd;
-                background:white;
-                padding:9px 14px;
-                border-radius:9px;
-                cursor:pointer;
-                font-weight:600;
-              "
-            >
-              📋 Copy Answer
-            </button>
-
-            <button
-              id="newSearch"
-              style="
-                border:none;
-                background:#101828;
-                color:white;
-                padding:9px 14px;
-                border-radius:9px;
-                cursor:pointer;
-                font-weight:600;
-              "
-            >
-              🔎 New Search
-            </button>
-
-          </div>
-
-        </div>
-      `;
-
-
-      document.getElementById("copyAnswer").addEventListener(
-        "click",
-        async function() {
-
-          try {
-            await navigator.clipboard.writeText(rawAnswer);
-            this.textContent = "✓ Copied";
-          } catch {
-            this.textContent = "Copy unavailable";
-          }
-
-        }
+      showJudgments(
+        data,
+        judgmentSearch
       );
 
+    } else {
 
-      document.getElementById("newSearch").addEventListener(
-        "click",
-        function() {
-
-          input.value = "";
-          input.focus();
-          answerArea.innerHTML = "";
-
-          window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-          });
-
-        }
+      await showAIAnswer(
+        query
       );
-
-
-      answerArea.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
 
     }
 
@@ -1166,16 +1149,20 @@ async function searchLaw() {
 
 
   button.disabled = false;
-  button.textContent = "Search";
+
+  button.textContent =
+    "Search";
 }
 
 
+// Search button
 button.addEventListener(
   "click",
   searchLaw
 );
 
 
+// Enter key
 input.addEventListener(
   "keydown",
   function(event) {
@@ -1187,7 +1174,7 @@ input.addEventListener(
   }
 );
 
-              </script>
+</script>
 </body>
             </html>              
 
