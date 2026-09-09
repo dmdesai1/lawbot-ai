@@ -1,4 +1,5 @@
-            <!DOCTYPE html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -30,8 +31,6 @@ body {
   color: var(--text);
   min-height: 100vh;
 }
-
-/* HEADER */
 
 header {
   background: rgba(16,24,40,0.97);
@@ -74,8 +73,6 @@ header {
   cursor: pointer;
 }
 
-/* HERO */
-
 .hero {
   max-width: 1050px;
   margin: auto;
@@ -113,8 +110,6 @@ header {
   font-size: 17px;
   line-height: 1.7;
 }
-
-/* SEARCH */
 
 .search-wrap {
   max-width: 850px;
@@ -166,8 +161,6 @@ header {
   font-size: 13px;
 }
 
-/* MAIN */
-
 .container {
   max-width: 1100px;
   margin: 0 auto;
@@ -178,8 +171,6 @@ header {
   font-size: 25px;
   margin: 20px 0 18px;
 }
-
-/* CARDS */
 
 .cards {
   display: grid;
@@ -217,8 +208,6 @@ header {
   font-size: 14px;
 }
 
-/* TRUST */
-
 .trust {
   margin-top: 24px;
   background: var(--dark);
@@ -236,8 +225,6 @@ header {
   line-height: 1.6;
   font-size: 14px;
 }
-
-/* ANSWER */
 
 .answer-area {
   max-width: 1100px;
@@ -295,8 +282,6 @@ header {
   text-decoration: none;
 }
 
-/* LOADING */
-
 .loading {
   display: flex;
   align-items: center;
@@ -317,8 +302,6 @@ header {
   to { opacity: 1; }
 }
 
-/* FOOTER */
-
 .disclaimer {
   text-align: center;
   padding: 20px;
@@ -334,8 +317,6 @@ footer {
   padding: 22px;
   font-size: 12px;
 }
-
-/* MOBILE */
 
 @media(max-width:750px) {
 
@@ -420,7 +401,7 @@ footer {
     </div>
 
     <div class="examples">
-      Try: “What is Section 302 of the BNS?”
+      Try: “What is Section 103 of the BNS?”
     </div>
 
   </div>
@@ -437,8 +418,8 @@ footer {
       <div class="card-icon">⚖️</div>
       <h2>Judgment Search</h2>
       <p>
-        Find relevant Supreme Court and High Court judgments.
-        Verified case research is coming next.
+        Find relevant Supreme Court and High Court judgments
+        from the connected legal database.
       </p>
     </div>
 
@@ -452,11 +433,11 @@ footer {
     </div>
 
     <div class="card">
-      <div class="card-icon">🌍</div>
-      <h2>International Law</h2>
+      <div class="card-icon">🇮🇳</div>
+      <h2>Indian Law</h2>
       <p>
-        Research treaties, conventions and international
-        legal materials.
+        Research Indian statutes, provisions and reported
+        legal authorities.
       </p>
     </div>
 
@@ -484,7 +465,7 @@ footer {
 </div>
 
 <footer>
-  © 2026 LawBot AI — Legal research platform Created by DT DESAI & SONS
+  © 2026 LawBot AI — Legal research platform Created by (D T DESAI AND SONS)
 </footer>
 
 <script>
@@ -492,6 +473,7 @@ footer {
 const input = document.getElementById("queryInput");
 const button = document.getElementById("searchBtn");
 const answerArea = document.getElementById("answerArea");
+
 
 function escapeHTML(text) {
   return String(text || "")
@@ -512,7 +494,6 @@ function detectJudgmentSearch(query) {
   let section = null;
   let court = null;
 
-  // Negotiable Instruments Act
   if (
     q.includes("negotiable instruments act") ||
     q.includes("negotiable instrument act") ||
@@ -526,7 +507,6 @@ function detectJudgmentSearch(query) {
     act = "ni-act";
   }
 
-  // Section number, if user provides one
   const sectionMatch = q.match(
     /\b(?:section|sec\.?)\s*(\d+[a-z]?)\b/i
   );
@@ -535,14 +515,12 @@ function detectJudgmentSearch(query) {
     section = sectionMatch[1];
   }
 
-  // Court
   if (q.includes("supreme court")) {
     court = "SC";
   } else if (q.includes("high court")) {
     court = "HC";
   }
 
-  // Words indicating a judgment/case search
   const wantsJudgments =
     q.includes("judgment") ||
     q.includes("judgement") ||
@@ -558,13 +536,6 @@ function detectJudgmentSearch(query) {
     q.includes("notice was not properly served") ||
     q.includes("notice not served");
 
-  /*
-    Natural-language judgment search.
-
-    If the user clearly asks for cases/judgments,
-    send the original query to the judgment API.
-  */
-
   if (wantsJudgments) {
 
     return {
@@ -577,7 +548,7 @@ function detectJudgmentSearch(query) {
   }
 
   return null;
-            }
+}
 
 
 // Call verified judgment API
@@ -716,7 +687,6 @@ function showJudgments(data, search) {
 
         </div>
 
-
         <div style="
           font-size:18px;
           font-weight:700;
@@ -727,7 +697,6 @@ function showJudgments(data, search) {
           ${caseName}
         </div>
 
-
         <div style="
           color:#475467;
           font-size:14px;
@@ -736,7 +705,6 @@ function showJudgments(data, search) {
           🏛️ ${court}
         </div>
 
-
         <div style="
           color:#475467;
           font-size:14px;
@@ -744,7 +712,6 @@ function showJudgments(data, search) {
         ">
           📚 ${citation}
         </div>
-
 
         ${
           cnr
@@ -759,7 +726,6 @@ function showJudgments(data, search) {
             `
             : ""
         }
-
 
         <div style="
           margin-top:15px;
@@ -828,11 +794,11 @@ function showJudgments(data, search) {
         color:#475467;
       ">
 
-        <strong>
-          Section ${escapeHTML(search.section)}
-        </strong>
-
-        <br>
+        ${
+          search.section
+            ? `<strong>Section ${escapeHTML(search.section)}</strong><br>`
+            : ""
+        }
 
         Judgments found in the connected
         legal database.
@@ -868,9 +834,7 @@ function showJudgments(data, search) {
     .addEventListener("click", function() {
 
       input.value = "";
-
       input.focus();
-
       answerArea.innerHTML = "";
 
       window.scrollTo({
@@ -888,120 +852,14 @@ function showJudgments(data, search) {
 }
 
 
-// Normal AI answer
+// Normal AI answer + verified legal section
 async function showAIAnswer(query) {
-
-  const response = await fetch("/api/chat", {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json"
-    },
-    body:JSON.stringify({
-      query:query
-    })
-  });
-
-
-  const data = await response.json();
-
-
-  if (!response.ok) {
-    throw new Error(
-      data.error || "Something went wrong."
-    );
-  }
-
-
-  const rawAnswer =
-    String(data.answer || "");
-
-
-  const safeAnswer =
-    rawAnswer
-      .replace(/&/g,"&amp;")
-      .replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;")
-      .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
-      .replace(/^### (.*)$/gm,"<h3>$1</h3>")
-      .replace(/^## (.*)$/gm,"<h2>$1</h2>")
-      .replace(/\n/g,"<br>");
-
-
-  const verifiedBadge =
-    data.verified
-
-      ? `<span class="verified">
-          ✓ Verified Source
-        </span>`
-
-      : `<span class="verified"
-          style="
-            background:#fff7ed;
-            color:#c2410c;
-            border-color:#fed7aa;
-          ">
-          AI Answer
-        </span>`;
-
-
-  const source =
-    data.source
-
-      ? `
-        <div class="source">
-
-          <span>📚 Source</span>
-
-          <a
-            href="${escapeHTML(data.source)}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View Original Legal Source ↗
-          </a>
-
-        </div>
-      `
-
-      : "";
-
-
-  answerArea.innerHTML = `
-    <div class="answer">
-
-      <div class="answer-header">
-
-        <div>
-
-          <div class="answer-title">
-            ⚖️ LawBot AI
-          </div>
-
-          <div style="
-            font-size:13px;
-            color:#667085;
-            margin-top:4px;
-          ">
-            Legal Research Result
-          </div>
-
-        </div>
-
-        ${verifiedBadge}
-
-      </div>
-
-
-      <div style="
-        background:#f8fafc;
-        border:1px solid #e4e7ec;
-nasync function showAIAnswer(query) {
 
   try {
 
     /*
       STEP 1
-      Try to retrieve a verified legal section first.
+      Retrieve a verified legal section first.
     */
 
     let sectionData = null;
@@ -1014,12 +872,10 @@ nasync function showAIAnswer(query) {
       sectionData = await sectionResponse.json();
     }
 
+
     /*
       STEP 2
-      Ask LawBot AI for the explanation.
-
-      The backend will use verified legal-source
-      information when the Act and section are recognised.
+      Ask Gemini through the LawBot backend.
     */
 
     const response = await fetch("/api/chat", {
@@ -1032,7 +888,9 @@ nasync function showAIAnswer(query) {
       })
     });
 
+
     const data = await response.json();
+
 
     if (!response.ok) {
       throw new Error(
@@ -1040,13 +898,15 @@ nasync function showAIAnswer(query) {
       );
     }
 
+
     /*
       STEP 3
-      Safely format the AI answer.
+      Safely format AI answer.
     */
 
     const rawAnswer =
       String(data.answer || "");
+
 
     const safeAnswer =
       rawAnswer
@@ -1058,12 +918,14 @@ nasync function showAIAnswer(query) {
         .replace(/^## (.*)$/gm, "<h2>$1</h2>")
         .replace(/\n/g, "<br>");
 
+
     /*
       STEP 4
-      Build verified section display.
+      Build verified legal provision.
     */
 
     let verifiedSection = "";
+
 
     if (
       sectionData &&
@@ -1074,6 +936,7 @@ nasync function showAIAnswer(query) {
 
       const section =
         sectionData.sections[0];
+
 
       verifiedSection = `
         <div style="
@@ -1092,20 +955,25 @@ nasync function showAIAnswer(query) {
             📜 Verified Legal Provision
           </div>
 
+
           <div style="
             font-size:14px;
             color:#475569;
             margin-bottom:12px;
           ">
+
             <strong>
               ${escapeHTML(section.act || "Indian Law")}
             </strong>
+
             ${
               section.section
                 ? ` — Section ${escapeHTML(String(section.section))}`
                 : ""
             }
+
           </div>
+
 
           ${
             section.heading
@@ -1119,6 +987,7 @@ nasync function showAIAnswer(query) {
               `
               : ""
           }
+
 
           ${
             section.text
@@ -1136,6 +1005,7 @@ nasync function showAIAnswer(query) {
               `
               : ""
           }
+
 
           ${
             section.url
@@ -1159,6 +1029,7 @@ nasync function showAIAnswer(query) {
               : ""
           }
 
+
           <div style="
             margin-top:12px;
             font-size:12px;
@@ -1170,8 +1041,8 @@ nasync function showAIAnswer(query) {
 
         </div>
       `;
-
     }
+
 
     /*
       STEP 5
@@ -1198,9 +1069,10 @@ nasync function showAIAnswer(query) {
           </span>
         `;
 
+
     /*
       STEP 6
-      Original source link from /api/chat.
+      Source from chat backend.
     */
 
     const source =
@@ -1222,9 +1094,10 @@ nasync function showAIAnswer(query) {
         `
         : "";
 
+
     /*
       STEP 7
-      Display the complete LawBot result.
+      Display answer.
     */
 
     answerArea.innerHTML = `
@@ -1252,7 +1125,9 @@ nasync function showAIAnswer(query) {
 
         </div>
 
+
         ${verifiedSection}
+
 
         <div style="
           background:#f8fafc;
@@ -1265,7 +1140,9 @@ nasync function showAIAnswer(query) {
           ${safeAnswer}
         </div>
 
+
         ${source}
+
 
         <div style="
           display:flex;
@@ -1288,6 +1165,7 @@ nasync function showAIAnswer(query) {
             📋 Copy Answer
           </button>
 
+
           <button
             id="newSearch"
             style="
@@ -1308,6 +1186,7 @@ nasync function showAIAnswer(query) {
       </div>
     `;
 
+
     /*
       STEP 8
       Copy button.
@@ -1315,7 +1194,7 @@ nasync function showAIAnswer(query) {
 
     document
       .getElementById("copyAnswer")
-      .addEventListener("click", async function () {
+      .addEventListener("click", async function() {
 
         try {
 
@@ -1323,22 +1202,20 @@ nasync function showAIAnswer(query) {
             rawAnswer
           );
 
-          this.textContent =
-            "✓ Copied";
+          this.textContent = "✓ Copied";
 
           setTimeout(() => {
-            this.textContent =
-              "📋 Copy Answer";
+            this.textContent = "📋 Copy Answer";
           }, 1500);
 
         } catch {
 
-          this.textContent =
-            "Copy unavailable";
+          this.textContent = "Copy unavailable";
 
         }
 
       });
+
 
     /*
       STEP 9
@@ -1347,12 +1224,10 @@ nasync function showAIAnswer(query) {
 
     document
       .getElementById("newSearch")
-      .addEventListener("click", function () {
+      .addEventListener("click", function() {
 
         input.value = "";
-
         input.focus();
-
         answerArea.innerHTML = "";
 
         window.scrollTo({
@@ -1361,6 +1236,7 @@ nasync function showAIAnswer(query) {
         });
 
       });
+
 
     /*
       STEP 10
@@ -1401,7 +1277,8 @@ nasync function showAIAnswer(query) {
 
   }
 
-                      }
+}
+
 
 // Main search
 async function searchLaw() {
@@ -1517,6 +1394,6 @@ input.addEventListener(
 );
 
 </script>
-</body>
-            </html>              
 
+</body>
+</html>
