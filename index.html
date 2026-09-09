@@ -244,6 +244,22 @@ footer {
 <footer>
   © 2026 LawBot AI — Legal Research Platform
 </footer>
+<script>
+document.querySelector("button").addEventListener("click", function () {
+    const input = document.querySelector("input");
+    const query = input.value.trim();
 
+    if (!query) {
+        alert("Please enter a legal question or search term.");
+        return;
+    }
+
+    window.open(
+        "https://www.google.com/search?q=" +
+        encodeURIComponent(query + " Indian law judgment"),
+        "_blank"
+    );
+});
+</script>
 </body>
       </html>
