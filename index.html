@@ -522,13 +522,95 @@ function escapeHTML(text) {
 
 function formatAnswer(text) {
 
-  let html = String(text || "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
+  let raw = String(text || "");
 
+  /*
+    Convert HTML anchor links into clean source buttons
+    before escaping the rest of the content.
+  */
+
+  raw = raw.replace(
+    /<a\b[^>]*href=["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
+    function(match, url) {
+
+      return ` SOURCE_LINK:${url} `;
+
+    }
+  );
+
+
+  /*
+    Convert Markdown links:
+    [Source](https://example.com)
+  */
+
+  raw = raw.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    function(match, label, url) {
+
+      return ` SOURCE_LINK:${url} `;
+
+    }
+  );
+
+
+  /*
+    Remove any remaining HTML tags.
+  */
+
+  raw = raw.replace(
+    /<[^>]*>/g,
+    ""
+  );
+
+
+  /*
+    Escape HTML safely.
+  */
+
+  let html = escapeHTML(raw);
+
+
+  /*
+    Convert source placeholders into clean buttons.
+  */
+
+  html = html.replace(
+    /SOURCE_LINK:(https?:\/\/[^\s<]+)/g,
+    function(match, url) {
+
+      const cleanUrl =
+        url.replace(/[.,);]+$/g,"");
+
+
+      return `
+        <a
+          href="${cleanUrl}"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="
+            display:inline-block;
+            margin:5px 6px 5px 0;
+            padding:8px 12px;
+            background:#101828;
+            color:white;
+            border-radius:8px;
+            text-decoration:none;
+            font-size:12px;
+            font-weight:600;
+          "
+        >
+          🔗 Open Verified Source ↗
+        </a>
+      `;
+
+    }
+  );
+
+
+  /*
+    Basic Markdown formatting.
+  */
 
   html = html
     .replace(
@@ -545,45 +627,12 @@ function formatAnswer(text) {
     );
 
 
-  html = html.replace(
-    /(https?:\/\/[^\s<]+)/g,
-    function(url) {
-
-      const cleanUrl =
-        url.replace(/[.,);]+$/g,"");
-
-
-      return `
-        <a
-          href="${cleanUrl}"
-          target="_blank"
-          rel="noopener noreferrer"
-          style="
-            display:inline-block;
-            margin:4px 5px 4px 0;
-            padding:7px 11px;
-            background:#101828;
-            color:white;
-            border-radius:7px;
-            text-decoration:none;
-            font-size:12px;
-            font-weight:600;
-          "
-        >
-          🔗 Open Verified Source ↗
-        </a>
-      `;
-
-    }
-  );
-
-
   return html.replace(
     /\n/g,
     "<br>"
   );
 
-}
+                }
 
 
 /*
