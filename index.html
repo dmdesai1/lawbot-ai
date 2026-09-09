@@ -995,107 +995,413 @@ async function showAIAnswer(query) {
       <div style="
         background:#f8fafc;
         border:1px solid #e4e7ec;
-        border-radius:12px;
-        padding:20px;
-        font-size:15px;
-        line-height:1.7;
-      ">
-        ${safeAnswer}
-      </div>
+nasync function showAIAnswer(query) {
 
+  try {
 
-      ${source}
+    /*
+      STEP 1
+      Try to retrieve a verified legal section first.
+    */
 
+    let sectionData = null;
 
-      <div style="
-        display:flex;
-        gap:10px;
-        margin-top:18px;
-        flex-wrap:wrap;
-      ">
+    const sectionResponse = await fetch(
+      "/api/sections?q=" + encodeURIComponent(query)
+    );
 
-        <button
-          id="copyAnswer"
-          style="
-            border:1px solid #d0d5dd;
-            background:white;
-            padding:9px 14px;
-            border-radius:9px;
-            cursor:pointer;
-            font-weight:600;
-          "
-        >
-          📋 Copy Answer
-        </button>
+    if (sectionResponse.ok) {
+      sectionData = await sectionResponse.json();
+    }
 
+    /*
+      STEP 2
+      Ask LawBot AI for the explanation.
 
-        <button
-          id="newSearch"
-          style="
-            border:none;
-            background:#101828;
-            color:white;
-            padding:9px 14px;
-            border-radius:9px;
-            cursor:pointer;
-            font-weight:600;
-          "
-        >
-          🔎 New Search
-        </button>
+      The backend will use verified legal-source
+      information when the Act and section are recognised.
+    */
 
-      </div>
-
-    </div>
-  `;
-
-
-  document
-    .getElementById("copyAnswer")
-    .addEventListener("click", async function() {
-
-      try {
-
-        await navigator.clipboard.writeText(
-          rawAnswer
-        );
-
-        this.textContent = "✓ Copied";
-
-      } catch {
-
-        this.textContent =
-          "Copy unavailable";
-
-      }
-
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        query: query
+      })
     });
 
+    const data = await response.json();
 
-  document
-    .getElementById("newSearch")
-    .addEventListener("click", function() {
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Something went wrong."
+      );
+    }
 
-      input.value = "";
+    /*
+      STEP 3
+      Safely format the AI answer.
+    */
 
-      input.focus();
+    const rawAnswer =
+      String(data.answer || "");
 
-      answerArea.innerHTML = "";
+    const safeAnswer =
+      rawAnswer
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/^### (.*)$/gm, "<h3>$1</h3>")
+        .replace(/^## (.*)$/gm, "<h2>$1</h2>")
+        .replace(/\n/g, "<br>");
 
-      window.scrollTo({
-        top:0,
-        behavior:"smooth"
+    /*
+      STEP 4
+      Build verified section display.
+    */
+
+    let verifiedSection = "";
+
+    if (
+      sectionData &&
+      sectionData.verified &&
+      sectionData.sections &&
+      sectionData.sections.length > 0
+    ) {
+
+      const section =
+        sectionData.sections[0];
+
+      verifiedSection = `
+        <div style="
+          background:#f8fafc;
+          border:1px solid #dbe4ec;
+          border-radius:12px;
+          padding:18px;
+          margin-bottom:18px;
+        ">
+
+          <div style="
+            font-size:16px;
+            font-weight:700;
+            margin-bottom:8px;
+          ">
+            📜 Verified Legal Provision
+          </div>
+
+          <div style="
+            font-size:14px;
+            color:#475569;
+            margin-bottom:12px;
+          ">
+            <strong>
+              ${escapeHTML(section.act || "Indian Law")}
+            </strong>
+            ${
+              section.section
+                ? ` — Section ${escapeHTML(String(section.section))}`
+                : ""
+            }
+          </div>
+
+          ${
+            section.heading
+              ? `
+                <div style="
+                  font-weight:700;
+                  margin-bottom:10px;
+                ">
+                  ${escapeHTML(section.heading)}
+                </div>
+              `
+              : ""
+          }
+
+          ${
+            section.text
+              ? `
+                <div style="
+                  background:white;
+                  border:1px solid #e2e8f0;
+                  border-radius:10px;
+                  padding:15px;
+                  font-size:14px;
+                  line-height:1.7;
+                ">
+                  ${escapeHTML(section.text)}
+                </div>
+              `
+              : ""
+          }
+
+          ${
+            section.url
+              ? `
+                <div style="
+                  margin-top:12px;
+                ">
+                  <a
+                    href="${escapeHTML(section.url)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="
+                      font-weight:600;
+                      text-decoration:none;
+                    "
+                  >
+                    View Original Legal Source ↗
+                  </a>
+                </div>
+              `
+              : ""
+          }
+
+          <div style="
+            margin-top:12px;
+            font-size:12px;
+            color:#15803d;
+            font-weight:600;
+          ">
+            ✓ Verified from connected legal database
+          </div>
+
+        </div>
+      `;
+
+    }
+
+    /*
+      STEP 5
+      AI verification badge.
+    */
+
+    const verifiedBadge =
+      data.verified
+        ? `
+          <span class="verified">
+            ✓ Verified Source
+          </span>
+        `
+        : `
+          <span
+            class="verified"
+            style="
+              background:#fff7ed;
+              color:#c2410c;
+              border-color:#fed7aa;
+            "
+          >
+            AI Answer
+          </span>
+        `;
+
+    /*
+      STEP 6
+      Original source link from /api/chat.
+    */
+
+    const source =
+      data.source
+        ? `
+          <div class="source">
+
+            <span>📗 Source</span>
+
+            <a
+              href="${escapeHTML(data.source)}"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View Original Legal Source ↗
+            </a>
+
+          </div>
+        `
+        : "";
+
+    /*
+      STEP 7
+      Display the complete LawBot result.
+    */
+
+    answerArea.innerHTML = `
+      <div class="answer">
+
+        <div class="answer-header">
+
+          <div>
+
+            <div class="answer-title">
+              ⚖️ LawBot AI
+            </div>
+
+            <div style="
+              font-size:13px;
+              color:#667085;
+              margin-top:4px;
+            ">
+              Legal Research Result
+            </div>
+
+          </div>
+
+          ${verifiedBadge}
+
+        </div>
+
+        ${verifiedSection}
+
+        <div style="
+          background:#f8fafc;
+          border:1px solid #e4e7ec;
+          border-radius:12px;
+          padding:20px;
+          font-size:15px;
+          line-height:1.7;
+        ">
+          ${safeAnswer}
+        </div>
+
+        ${source}
+
+        <div style="
+          display:flex;
+          gap:10px;
+          margin-top:18px;
+          flex-wrap:wrap;
+        ">
+
+          <button
+            id="copyAnswer"
+            style="
+              border:1px solid #d0d5dd;
+              background:white;
+              padding:9px 14px;
+              border-radius:9px;
+              cursor:pointer;
+              font-weight:600;
+            "
+          >
+            📋 Copy Answer
+          </button>
+
+          <button
+            id="newSearch"
+            style="
+              border:none;
+              background:#101828;
+              color:white;
+              padding:9px 14px;
+              border-radius:9px;
+              cursor:pointer;
+              font-weight:600;
+            "
+          >
+            🔵 New Search
+          </button>
+
+        </div>
+
+      </div>
+    `;
+
+    /*
+      STEP 8
+      Copy button.
+    */
+
+    document
+      .getElementById("copyAnswer")
+      .addEventListener("click", async function () {
+
+        try {
+
+          await navigator.clipboard.writeText(
+            rawAnswer
+          );
+
+          this.textContent =
+            "✓ Copied";
+
+          setTimeout(() => {
+            this.textContent =
+              "📋 Copy Answer";
+          }, 1500);
+
+        } catch {
+
+          this.textContent =
+            "Copy unavailable";
+
+        }
+
       });
 
+    /*
+      STEP 9
+      New Search button.
+    */
+
+    document
+      .getElementById("newSearch")
+      .addEventListener("click", function () {
+
+        input.value = "";
+
+        input.focus();
+
+        answerArea.innerHTML = "";
+
+        window.scrollTo({
+          top:0,
+          behavior:"smooth"
+        });
+
+      });
+
+    /*
+      STEP 10
+      Scroll result into view.
+    */
+
+    answerArea.scrollIntoView({
+      behavior:"smooth",
+      block:"start"
     });
 
+  } catch (error) {
 
-  answerArea.scrollIntoView({
-    behavior:"smooth",
-    block:"start"
-  });
-}
+    console.error(error);
 
+    answerArea.innerHTML = `
+      <div class="answer">
+
+        <div class="answer-title">
+          ⚠️ LawBot AI
+        </div>
+
+        <div style="
+          margin-top:15px;
+          padding:15px;
+          background:#fff7ed;
+          border:1px solid #fed7aa;
+          border-radius:10px;
+        ">
+          ${escapeHTML(
+            error.message ||
+            "Something went wrong. Please try again."
+          )}
+        </div>
+
+      </div>
+    `;
+
+  }
+
+                      }
 
 // Main search
 async function searchLaw() {
