@@ -27,21 +27,34 @@ export default async function handler(req, res) {
     if (section) params.set("section", section);
     if (court) params.set("court", court);
 
-    params.set("limit", "10");
+    params.set("limit", "100");
 
-    const response = await fetch(
-      `https://indiacode.ecourtsindia.com/api/v1/judgments?${params.toString()}`
-    );
+    let url =
+      `https://indiacode.ecourtsindia.com/api/v1/judgments?${params.toString()}`;
 
-    const data = await response.json();
+    const allJudgments = [];
+    let total = 0;
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data.error || "Judgment search failed"
-      });
+    while (url) {
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!response.ok) {
+        return res.status(response.status).json({
+          error: data.error || "Judgment search failed"
+        });
+      }
+
+      total = data.total || total;
+
+      if (Array.isArray(data.judgments)) {
+        allJudgments.push(...data.judgments);
+      }
+
+      url = data.next || null;
     }
 
-    const judgments = (data.judgments || []).map(judgment => ({
+    const judgments = allJudgments.map(judgment => ({
       verified: true,
       caseName: judgment.title,
       court: judgment.court_name,
@@ -54,7 +67,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       verified: true,
-      total: data.total || 0,
+      total,
+      count: judgments.length,
       judgments
     });
 
@@ -65,4 +79,4 @@ export default async function handler(req, res) {
       error: "Server error"
     });
   }
-      }
+}
