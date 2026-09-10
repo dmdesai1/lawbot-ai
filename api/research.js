@@ -1,913 +1,443 @@
 export default async function handler(req, res) {
-
-  if (req.method !== "POST" && req.method !== "GET") {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
-  }
-
   try {
-
-    /*
-      --------------------------------------------------
-      GET USER QUERY
-      --------------------------------------------------
-    */
-
-    let query = "";
-
-    if (req.method === "POST") {
-      query = String(req.body?.query || "").trim();
-    } else {
-      query = String(
-        req.query?.q ||
-        req.query?.query ||
-        ""
-      ).trim();
-    }
+    const body = req.body || {};
+    const query = String(
+      body.query ||
+      body.q ||
+      req.query?.query ||
+      req.query?.q ||
+      ""
+    ).trim();
 
     if (!query) {
       return res.status(400).json({
-        error: "Please enter a legal research question."
+        error: "Please enter a legal research query."
       });
     }
 
-
-    /*
-      --------------------------------------------------
-      BASIC ACT / SECTION DETECTION
-      --------------------------------------------------
-    */
+    const API_BASE =
+      `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
 
     const q = query.toLowerCase();
 
     let act = "";
     let section = "";
 
-
-    if (
-      /\bBNS\b|bharatiya nyaya sanhita/i.test(query)
-    ) {
+    // -----------------------------
+    // Known Act detection
+    // -----------------------------
+    if (/\bBNS\b|bharatiya nyaya sanhita/i.test(query)) {
       act = "bns";
-    }
-
-    else if (
+    } else if (
       /\bBNSS\b|bharatiya nagarik suraksha sanhita/i.test(query)
     ) {
       act = "bnss";
-    }
-
-    else if (
+    } else if (
       /\bBSA\b|bharatiya sakshya adhiniyam|evidence act/i.test(query)
     ) {
       act = "bsa";
-    }
-
-    else if (
-      /\bIPC\b|indian penal code/i.test(query)
-    ) {
+    } else if (/\bIPC\b|indian penal code/i.test(query)) {
       act = "ipc";
-    }
-
-    else if (
+    } else if (
       /\bCrPC\b|code of criminal procedure/i.test(query)
     ) {
       act = "crpc";
-    }
-
-    else if (
+    } else if (
       /\bCPC\b|code of civil procedure/i.test(query)
     ) {
       act = "cpc";
-    }
-
-    else if (
+    } else if (
       /\bNI\s*Act\b|negotiable instruments act|cheque bounce/i.test(query)
     ) {
       act = "ni-act";
     }
 
-
+    // -----------------------------
+    // Section detection
+    // -----------------------------
     const sectionMatch =
       query.match(
-        /\b(?:section|sec\.?)\s*(\d+[A-Za-z]?)\b/i
+        /\b(?:section|sec\.?)\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
       ) ||
       query.match(
-        /\b(?:BNS|BNSS|BSA|IPC|CrPC|CPC)\s*[-:]?\s*(\d+[A-Za-z]?)\b/i
+        /\b(?:BNS|BNSS|BSA|IPC|CrPC|CPC)\s*[-:]?\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
       ) ||
       query.match(
-        /\b(?:NI\s*ACT|N\.I\.\s*ACT)\s*[-:]?\s*(\d+[A-Za-z]?)\b/i
+        /\b(?:NI\s*ACT|N\.I\.\s*ACT)\s*[-:]?\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
       );
-
 
     if (sectionMatch) {
       section = sectionMatch[1];
     }
 
+    // -----------------------------
+    // Retrieve verified provisions
+    // -----------------------------
+    const sectionResponse = await fetch(
+      `${API_BASE}/api/sections?q=${encodeURIComponent(query)}`
+    );
 
-    /*
-      --------------------------------------------------
-      INTERNAL API BASE
-      --------------------------------------------------
-    */
-
-    const protocol =
-      req.headers["x-forwarded-proto"] ||
-      "https";
-
-    const host =
-      req.headers.host;
-
-
-    if (!host) {
-      return res.status(500).json({
-        error: "Unable to determine research server."
-      });
+    if (!sectionResponse.ok) {
+      throw new Error("Legal provision search failed.");
     }
 
+    const sectionData = await sectionResponse.json();
 
-    const baseUrl =
-      `${protocol}://${host}`;
+    const sections = Array.isArray(sectionData.sections)
+      ? sectionData.sections
+      : [];
 
+    // -----------------------------
+    // Dynamically infer Act + Section
+    // -----------------------------
+    if (!act && sections.length > 0) {
+      const exact =
+        sections.find((item) => {
+          const itemSection = String(
+            item.section ||
+            item.number ||
+            ""
+          ).toLowerCase();
 
-    /*
-      --------------------------------------------------
-      RETRIEVE VERIFIED LEGAL SECTIONS
-      --------------------------------------------------
-    */
+          return section && itemSection === String(section).toLowerCase();
+        }) || sections[0];
 
-    let sectionResults = [];
+      if (exact) {
+        act =
+          exact.actId ||
+          exact.act_id ||
+          exact.act ||
+          "";
 
-
-    try {
-
-      const sectionParams =
-        new URLSearchParams();
-
-      sectionParams.set(
-        "q",
-        query
-      );
-
-
-      const sectionResponse =
-        await fetch(
-          `${baseUrl}/api/sections?${sectionParams.toString()}`
-        );
-
-
-      if (sectionResponse.ok) {
-
-        const sectionData =
-          await sectionResponse.json();
-
-
-        if (
-          Array.isArray(
-            sectionData.sections
-          )
-        ) {
-
-          sectionResults =
-            sectionData.sections
-              .slice(0, 10)
-              .map(sectionItem => ({
-
-                verified:
-                  sectionItem.verified === true,
-
-                act:
-                  sectionItem.act || null,
-
-                actId:
-                  sectionItem.actId || null,
-
-                section:
-                  sectionItem.section || null,
-
-                heading:
-                  sectionItem.heading || null,
-
-                text:
-                  sectionItem.text || null,
-
-                url:
-                  sectionItem.url || null,
-
-                correspondingProvisions:
-                  Array.isArray(
-                    sectionItem.correspondingProvisions
-                  )
-                    ? sectionItem.correspondingProvisions
-                    : []
-
-              }));
-
+        if (!section) {
+          section =
+            exact.section ||
+            exact.number ||
+            "";
         }
-
       }
-
-    } catch (sectionError) {
-
-      console.error(
-        "Research section retrieval error:",
-        sectionError
-      );
-
     }
 
+    // -----------------------------
+    // Retrieve verified judgments
+    // -----------------------------
+    let judgments = [];
 
-    /*
-      --------------------------------------------------
-      PRIORITIZE EXACT ACT + SECTION
-      --------------------------------------------------
-    */
+    const judgmentParams = new URLSearchParams();
 
-    if (act && section) {
+    judgmentParams.set("query", query);
 
-      const exactSection =
-        sectionResults.find(item => {
-
-          return (
-            String(
-              item.actId || ""
-            ).toLowerCase() ===
-              act.toLowerCase() &&
-
-            String(
-              item.section || ""
-            ).toLowerCase() ===
-              section.toLowerCase()
-          );
-
-        });
-
-
-      if (exactSection) {
-
-        sectionResults = [
-          exactSection,
-          ...sectionResults.filter(
-            item => item !== exactSection
-          )
-        ];
-
-      }
-
+    if (act) {
+      judgmentParams.set("act", act);
     }
 
-
-    /*
-      --------------------------------------------------
-      RETRIEVE VERIFIED JUDGMENTS
-      --------------------------------------------------
-    */
-
-    let judgmentResults = [];
-
-
-    try {
-
-      const judgmentParams =
-        new URLSearchParams();
-
-      judgmentParams.set(
-        "query",
-        query
-      );
-
-
-      if (act) {
-
-        judgmentParams.set(
-          "act",
-          act
-        );
-
-      }
-
-
-      if (section) {
-
-        judgmentParams.set(
-          "section",
-          section
-        );
-
-      }
-
-
-      const judgmentResponse =
-        await fetch(
-          `${baseUrl}/api/judgments?${judgmentParams.toString()}`
-        );
-
-
-      if (judgmentResponse.ok) {
-
-        const judgmentData =
-          await judgmentResponse.json();
-
-
-        if (
-          Array.isArray(
-            judgmentData.judgments
-          )
-        ) {
-
-          judgmentResults =
-            judgmentData.judgments
-              .filter(
-                judgment =>
-                  judgment &&
-                  judgment.verified === true
-              )
-              .slice(0, 20)
-              .map(judgment => ({
-
-                verified: true,
-
-                caseName:
-                  judgment.caseName || null,
-
-                court:
-                  judgment.court || null,
-
-                courtLevel:
-                  judgment.courtLevel || null,
-
-                date:
-                  judgment.date || null,
-
-                citation:
-                  judgment.citation || null,
-
-                cnr:
-                  judgment.cnr || null,
-
-                facts:
-                  judgment.facts || null,
-
-                issues:
-                  judgment.issues || null,
-
-                decision:
-                  judgment.decision || null,
-
-                ratio:
-                  judgment.ratio || null,
-
-                appliedToSection:
-                  judgment.appliedToSection || null,
-
-                basis:
-                  judgment.basis || null,
-
-                precedentialValue:
-                  judgment.precedentialValue || null,
-
-                source:
-                  judgment.source || null
-
-              }));
-
-        }
-
-      }
-
-    } catch (judgmentError) {
-
-      console.error(
-        "Research judgment retrieval error:",
-        judgmentError
-      );
-
+    if (section) {
+      judgmentParams.set("section", section);
     }
 
+    const judgmentResponse = await fetch(
+      `${API_BASE}/api/judgments?${judgmentParams.toString()}`
+    );
 
-    /*
-      --------------------------------------------------
-      BUILD VERIFIED PROVISION MATERIAL
-      --------------------------------------------------
-    */
+    if (judgmentResponse.ok) {
+      const judgmentData = await judgmentResponse.json();
 
-    const verifiedSectionsText =
-      sectionResults.length > 0
+      judgments = Array.isArray(judgmentData.judgments)
+        ? judgmentData.judgments
+        : [];
+    }
 
-        ? sectionResults
-            .map((item, index) => {
+    // -----------------------------
+    // Build verified provision text
+    // -----------------------------
+    const verifiedSections = sections
+      .map((item) => {
+        return {
+          actId:
+            item.actId ||
+            item.act_id ||
+            item.act ||
+            null,
 
-              const mappings =
-                item.correspondingProvisions
-                  .map(mapping => {
+          actName:
+            item.actName ||
+            item.act_name ||
+            item.title ||
+            null,
 
-                    return `
-Act:
-${mapping.act || "Unknown"}
+          section:
+            item.section ||
+            item.number ||
+            null,
 
-Section:
-${mapping.section || "Unknown"}
+          heading:
+            item.heading ||
+            item.title ||
+            null,
 
-Relationship:
-${mapping.relation || "Corresponding provision"}
+          text:
+            item.text ||
+            item.content ||
+            item.snippet ||
+            null,
 
-Similarity Score:
-${mapping.score ?? "Not provided"}
+          classification:
+            item.classification ||
+            null,
 
-Source:
-${mapping.url || "Not provided"}
-`;
+          correspondingProvisions:
+            Array.isArray(item.correspondingProvisions)
+              ? item.correspondingProvisions
+              : [],
 
-                  })
-                  .join("\n");
+          crossReferences:
+            Array.isArray(item.crossReferences)
+              ? item.crossReferences
+              : [],
 
+          source:
+            item.source ||
+            item.url ||
+            null
+        };
+      })
+      .filter((item) => item.text);
 
-              return `
-========================================
-VERIFIED PROVISION ${index + 1}
-========================================
+    // -----------------------------
+    // Build verified judgment text
+    // -----------------------------
+    const verifiedJudgments = judgments.map((judgment) => {
+      return {
+        caseName: judgment.caseName || null,
+        court: judgment.court || null,
+        courtLevel: judgment.courtLevel || null,
+        date: judgment.date || null,
+        citation: judgment.citation || null,
+        cnr: judgment.cnr || null,
+        facts: judgment.facts || null,
+        issues: judgment.issues || null,
+        decision: judgment.decision || null,
+        ratio: judgment.ratio || null,
+        appliedToSection:
+          judgment.appliedToSection || null,
+        basis: judgment.basis || null,
+        precedentialValue:
+          judgment.precedentialValue || null,
+        source: judgment.source || null
+      };
+    });
 
-Act:
-${item.act || "Unknown"}
-
-Act ID:
-${item.actId || "Unknown"}
-
-Section:
-${item.section || "Unknown"}
-
-Heading:
-${item.heading || "Not provided"}
-
-FULL STATUTORY TEXT:
-${item.text || "Not provided"}
-
-CORRESPONDING PROVISIONS:
-${mappings || "None returned"}
-
-ORIGINAL SOURCE:
-${item.url || "Not provided"}
-`;
-
-            })
-            .join("\n")
-
-        : "NO VERIFIED PROVISIONS WERE RETRIEVED.";
-
-
-    /*
-      --------------------------------------------------
-      BUILD VERIFIED JUDGMENT MATERIAL
-      --------------------------------------------------
-    */
-
-    const verifiedJudgmentsText =
-      judgmentResults.length > 0
-
-        ? judgmentResults
-            .map((item, index) => {
-
-              return `
-========================================
-VERIFIED JUDGMENT ${index + 1}
-========================================
-
-Case Name:
-${item.caseName || "Not provided"}
-
-Court:
-${item.court || "Not provided"}
-
-Court Level:
-${item.courtLevel || "Not provided"}
-
-Date:
-${item.date || "Not provided"}
-
-Citation:
-${item.citation || "Not provided by source"}
-
-CNR:
-${item.cnr || "Not provided"}
-
-Facts:
-${item.facts || "Not provided by source"}
-
-Issues:
-${item.issues || "Not provided by source"}
-
-Decision:
-${item.decision || "Not provided by source"}
-
-Ratio / Legal Principle:
-${item.ratio || "Not provided by source"}
-
-Application to Section:
-${item.appliedToSection || "Not provided by source"}
-
-Basis:
-${item.basis || "Not provided by source"}
-
-Precedential Value:
-${item.precedentialValue || "Not provided by source"}
-
-Original Source:
-${item.source || "Not provided"}
-`;
-
-            })
-            .join("\n")
-
-        : "NO VERIFIED JUDGMENTS WERE RETRIEVED.";
-
-
-    /*
-      --------------------------------------------------
-      GEMINI RESEARCH PROMPT
-      --------------------------------------------------
-    */
-
-    const prompt = `
+    // -----------------------------
+    // Gemini
+    // -----------------------------
+    const geminiPrompt = `
 You are LawBot AI, an Indian legal research assistant.
 
-USER QUESTION:
-${query}
+The user asked:
 
+"${query}"
 
-==================================================
-VERIFIED STATUTORY MATERIAL
-==================================================
+IMPORTANT SOURCE RULE:
 
-${verifiedSectionsText}
+The VERIFIED LEGAL MATERIAL below comes from the connected legal database.
 
+Use that material as the source of truth.
 
-==================================================
-VERIFIED JUDGMENTS
-==================================================
-
-${verifiedJudgmentsText}
-
-
-==================================================
-CORE RESEARCH RULE
-==================================================
-
-Use the retrieved verified legal material above as
-the primary source of truth.
-
-Accuracy is more important than completeness.
-
-NEVER invent:
-
-- cases
+Do NOT invent:
+- sections
+- Acts
+- case names
 - citations
-- courts
-- dates
-- statutory sections
-- punishment
 - facts
 - issues
 - decisions
-- legal principles
-- exceptions
-- provisos
-- definitions
+- ratios
+- precedential value
+- statutory mappings
+- legal quotations
 
-If information is not supplied by the retrieved
-source, clearly say that it was not provided.
+If a field is not supplied by the verified data, say that the field was not provided.
 
+Do not pretend that every judgment in India has been searched.
+The judgment results are only the verified judgments returned by the connected database.
 
-==================================================
-DETAILED SECTION RESEARCH
-==================================================
+Clearly distinguish between:
+1. Statutory provision
+2. Judicial decision
+3. Legal principle
+4. Practical significance
 
-When the user asks about a particular section,
-provide a useful and detailed legal-research
-explanation.
+For statutory provisions, explain the actual retrieved text accurately.
 
-Where supported by the retrieved material, explain:
+For judgments, only discuss facts, issues, decision and ratio when those fields are actually supplied.
 
-1. Meaning of the provision.
+VERIFIED PROVISIONS:
 
-2. Purpose and legal effect.
+${JSON.stringify(verifiedSections, null, 2)}
 
-3. Essential ingredients / elements.
+VERIFIED JUDGMENTS:
 
-4. What must generally be established for the
-   provision to apply.
+${JSON.stringify(verifiedJudgments, null, 2)}
 
-5. Punishment, penalty or consequence.
+ACT DETECTED:
 
-6. Exceptions, provisos and explanations.
+${act || "Not conclusively detected"}
 
-7. Relevant definitions.
+SECTION DETECTED:
 
-8. Related statutory provisions.
+${section || "Not conclusively detected"}
 
-9. Corresponding provisions under earlier/current
-   legislation.
-
-10. Verified judicial interpretation.
-
-11. Practical significance.
-
-12. A simple hypothetical illustration when useful.
-
-
-IMPORTANT:
-
-Do not manufacture any of these details.
-
-If the retrieved material does not contain enough
-information for a particular point, say:
-
-"Not established from the retrieved source material."
-
-
-==================================================
-JUDGMENT RULES
-==================================================
-
-Only discuss judgments listed under VERIFIED JUDGMENTS.
-
-For each relevant judgment, distinguish:
-
-- Facts
-- Issues
-- Decision
-- Ratio / Legal Principle
-- Application to the section
-- Precedential Value
-
-If a field says "Not provided by source",
-do not fill it from memory.
-
-Never create a citation from your own knowledge.
-
-Never claim the connected corpus contains every
-judgment in India.
-
-
-==================================================
-STATUTORY MAPPING
-==================================================
-
-If a corresponding provision is supplied by the
-database, report it accurately.
-
-For example:
-
-IPC Section 302
-→ BNS Section 103
-
-However, if the database describes a relationship
-as "near-identical", "similar", or another database
-classification, preserve that wording.
-
-Do NOT describe a similarity mapping as an officially
-enacted equivalence unless the source specifically
-establishes that.
-
-
-==================================================
-NO VERIFIED MATERIAL
-==================================================
-
-If no verified statutory provision was retrieved,
-say exactly:
-
-"No verified statutory provision was retrieved for
-this research query."
-
-If no verified judgment was retrieved, say exactly:
-
-"No verified judgment was retrieved for this research
-query."
-
-
-==================================================
-RESPONSE FORMAT
-==================================================
+Prepare a detailed legal research answer using this structure:
 
 ## Legal Issue
 
-Clearly identify the legal question.
+Explain what the user's query concerns.
 
 ## Relevant Provision
 
-Explain:
-
-- Act
-- Section
-- Heading
-- Meaning
-- Legal effect
+Give the relevant Act, section/article and explain the retrieved statutory provision.
 
 ## Essential Elements
 
-Explain the important ingredients/elements supported
-by the retrieved material.
+Explain the elements or requirements contained in the retrieved provision.
 
 ## Punishment / Consequence
 
-State punishment or consequence only when supported
-by the retrieved material.
+Explain the punishment, penalty, consequence or legal effect only if supported by the retrieved material.
 
 ## Exceptions / Provisos / Explanations
 
-Explain only what is supported by the retrieved
-material.
+Explain any provisos, explanations, exceptions or qualifications present in the retrieved material.
 
 ## Related Provisions
 
-Identify relevant connected provisions.
+Discuss retrieved corresponding provisions and cross-references.
 
 ## Statutory Mapping
 
-Explain corresponding provisions supplied by the
-database.
+Explain any database-provided relationship with earlier or corresponding legislation.
+
+If the database gives a relation such as "near-identical", "successor", "predecessor" or another relationship, describe it carefully.
+
+Do not call a computed similarity relationship an official legislative declaration unless the source says so.
 
 ## Verified Judgments
 
-For each relevant verified judgment provide:
+For each relevant retrieved judgment, provide:
 
-### Case Name
+- Case name
+- Court
+- Date
+- Citation, if supplied
+- Facts, if supplied
+- Issues, if supplied
+- Decision, if supplied
+- Ratio / legal principle, if supplied
+- Application to the provision, if supplied
 
-- Court:
-- Date:
-- Citation:
-- Facts:
-- Issues:
-- Decision:
-- Ratio / Legal Principle:
-- Application to Section:
-- Precedential Value:
-- Why Relevant:
-
-Never invent missing information.
+Do not manufacture missing details.
 
 ## Practical Significance
 
-Explain the practical significance of the retrieved
-law and judgments.
+Explain how the retrieved provision and judgments may matter in practice.
 
 ## Illustrative Example
 
-Provide a short hypothetical example where useful.
+Give a simple hypothetical example based only on the legal rule actually established by the retrieved provision.
 
-Clearly label it as an illustration and not as an
-additional legal authority.
+Clearly label it as an illustration, not as a real case.
 
 ## Sources
 
-List the supplied source links.
+List the retrieved legal sources.
+
+Use the actual source URLs supplied by the database.
+
+If no verified provision was found, say:
+
+"No verified statutory provision was retrieved from the connected legal database."
+
+If no verified judgments were found, say:
+
+"No verified judgments were retrieved from the connected legal database for this query."
 
 End with:
 
-"⚠️ This information is for legal research and
-educational purposes and does not constitute formal
-legal advice."
+"LawBot AI provides legal research information and does not replace advice from a qualified advocate."
 
-
-==================================================
-FINAL RULE
-==================================================
-
-Do not rely on unsupported memory when the retrieved
-legal source material is incomplete.
-
-If something cannot be established from the retrieved
-material, say so clearly.
+Return only the research answer.
 `;
 
-
-    /*
-      --------------------------------------------------
-      GEMINI API
-      --------------------------------------------------
-    */
-
-    const geminiResponse =
-      await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            "x-goog-api-key":
-              process.env.GEMINI_API_KEY
-          },
-
-          body: JSON.stringify({
-
-            contents: [
-
-              {
-                role: "user",
-
-                parts: [
-
-                  {
-                    text: prompt
-                  }
-
-                ]
-
-              }
-
-            ]
-
-          })
-
-        }
-      );
-
-
-    const geminiData =
-      await geminiResponse.json();
-
-
-    if (!geminiResponse.ok) {
-
-      return res.status(
-        geminiResponse.status
-      ).json({
-
-        error:
-          geminiData.error?.message ||
-          "Gemini API error"
-
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: "GEMINI_API_KEY is not configured."
       });
-
     }
 
+    const geminiResponse = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: geminiPrompt
+                }
+              ]
+            }
+          ]
+        })
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+
+      throw new Error(
+        `Gemini request failed: ${errorText}`
+      );
+    }
+
+    const geminiData = await geminiResponse.json();
 
     const answer =
-      geminiData.candidates?.[0]
-        ?.content?.parts?.[0]
-        ?.text ||
-      "I could not generate the legal research answer.";
-
-
-    /*
-      --------------------------------------------------
-      FINAL RESPONSE
-      --------------------------------------------------
-    */
+      geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Unable to generate a research answer.";
 
     return res.status(200).json({
-
       verified:
-        sectionResults.some(
-          item => item.verified
-        ) ||
-        judgmentResults.some(
-          item => item.verified
-        ),
+        verifiedSections.length > 0 ||
+        verifiedJudgments.length > 0,
 
       query,
 
-      act:
-        act || null,
+      act: act || null,
 
-      section:
-        section || null,
+      section: section || null,
 
-      sections:
-        sectionResults,
+      sections: verifiedSections,
 
-      judgments:
-        judgmentResults,
+      judgments: verifiedJudgments,
 
-      sectionCount:
-        sectionResults.length,
+      sectionCount: verifiedSections.length,
 
-      judgmentCount:
-        judgmentResults.length,
+      judgmentCount: verifiedJudgments.length,
 
       answer
-
     });
-
 
   } catch (error) {
-
-    console.error(
-      "LawBot research error:",
-      error
-    );
-
+    console.error("Research API error:", error);
 
     return res.status(500).json({
-
       error:
-        "Server error while conducting legal research."
-
+        error?.message ||
+        "Unable to complete legal research."
     });
-
   }
-
-      }
+}
