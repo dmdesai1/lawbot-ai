@@ -8,12 +8,22 @@ export default async function handler(req, res) {
 
   try {
 
+    /*
+      --------------------------------------------------
+      GET QUERY
+      --------------------------------------------------
+    */
+
     let query = "";
 
     if (req.method === "POST") {
-      query = (req.body?.query || "").trim();
+      query = String(req.body?.query || "").trim();
     } else {
-      query = (req.query?.q || "").trim();
+      query = String(
+        req.query?.q ||
+        req.query?.query ||
+        ""
+      ).trim();
     }
 
     if (!query) {
@@ -22,11 +32,16 @@ export default async function handler(req, res) {
       });
     }
 
+
     const q = query.toLowerCase();
 
 
     /*
-      COMMON INDIAN ACT ALIASES
+      --------------------------------------------------
+      KNOWN ACT ALIASES
+      --------------------------------------------------
+      These are shortcuts only.
+      Unknown Acts will be discovered dynamically.
     */
 
     const actMap = [
@@ -90,8 +105,8 @@ export default async function handler(req, res) {
         id: "ni-act",
         name: "Negotiable Instruments Act, 1881",
         patterns: [
-          /\bni act\b/i,
-          /\bn\.i\. act\b/i,
+          /\bni\s*act\b/i,
+          /\bn\.i\.\s*act\b/i,
           /negotiable instruments act/i,
           /cheque bounce/i,
           /check bounce/i
@@ -102,27 +117,23 @@ export default async function handler(req, res) {
 
 
     /*
-      FIND ACT
+      --------------------------------------------------
+      FIND KNOWN ACT
+      --------------------------------------------------
     */
 
-    const selectedAct = actMap.find(act =>
-      act.patterns.some(pattern =>
-        pattern.test(q)
-      )
-    );
+    let selectedAct =
+      actMap.find(act =>
+        act.patterns.some(pattern =>
+          pattern.test(q)
+        )
+      ) || null;
 
 
     /*
-      DETECT SECTION NUMBER
-
-      Supports:
-
-      IPC 302
-      IPC Section 302
-      BNS 103
-      BNS Section 103
-      CrPC 154
-      Section 138
+      --------------------------------------------------
+      DETECT SECTION
+      --------------------------------------------------
     */
 
     const sectionMatch =
@@ -143,20 +154,177 @@ export default async function handler(req, res) {
         : null;
 
 
+    const API_BASE =
+      "https://indiacode.ecourtsindia.com/api/v1";
+
+
     /*
-      EXACT ACT + SECTION SEARCH
+      --------------------------------------------------
+      DYNAMIC ACT DISCOVERY
+      --------------------------------------------------
+      If the Act isn't one of our known aliases,
+      search the legal database itself.
+    */
+
+    if (!selectedAct) {
+
+      try {
+
+        const searchUrl =
+          `${API_BASE}/search?` +
+          new URLSearchParams({
+            q: query,
+            kind: "section",
+            limit: "40"
+          }).toString();
+
+
+        const searchResponse =
+          await fetch(searchUrl);
+
+
+        if (searchResponse.ok) {
+
+          const searchData =
+            await searchResponse.json();
+
+
+          const results =
+            Array.isArray(searchData.results)
+              ? searchData.results
+              : [];
+
+
+          /*
+            Prefer a result matching the requested
+            section number.
+          */
+
+          let candidate =
+            sectionNumber
+              ? results.find(result => {
+
+                  return String(
+                    result.section ||
+                    result.number ||
+                    ""
+                  ).toLowerCase() ===
+                    String(
+                      sectionNumber
+                    ).toLowerCase();
+
+                })
+              : results[0];
+
+
+          /*
+            If no exact section match was found,
+            use the first useful result.
+          */
+
+          if (!candidate) {
+            candidate = results[0];
+          }
+
+
+          if (candidate) {
+
+            let discoveredActId = null;
+
+
+            /*
+              Extract Act ID from source URL.
+            */
+
+            if (candidate.url) {
+
+              const urlMatch =
+                candidate.url.match(
+                  /\/([^/]+)\/section\/([^/?#]+)/i
+                );
+
+
+              if (urlMatch) {
+                discoveredActId =
+                  urlMatch[1];
+              }
+
+            }
+
+
+            /*
+              Some search results may expose
+              the Act directly.
+            */
+
+            discoveredActId =
+              discoveredActId ||
+              candidate.act_id ||
+              candidate.actId ||
+              null;
+
+
+            if (discoveredActId) {
+
+              selectedAct = {
+
+                id:
+                  discoveredActId,
+
+                name:
+                  candidate.act ||
+                  candidate.act_title ||
+                  candidate.actTitle ||
+                  candidate.title ||
+                  discoveredActId
+
+              };
+
+            }
+
+          }
+
+        }
+
+      } catch (dynamicActError) {
+
+        console.error(
+          "Dynamic Act discovery error:",
+          dynamicActError
+        );
+
+      }
+
+    }
+
+
+    /*
+      --------------------------------------------------
+      IF ACT IS KNOWN + SECTION IS KNOWN
+      GET EXACT PROVISION
+      --------------------------------------------------
     */
 
     if (selectedAct && sectionNumber) {
 
       const exactUrl =
-        `https://indiacode.ecourtsindia.com/api/v1/${selectedAct.id}/section/${encodeURIComponent(sectionNumber)}`;
+        `${API_BASE}/${selectedAct.id}/section/` +
+        encodeURIComponent(sectionNumber);
+
 
       const exactResponse =
         await fetch(exactUrl);
 
-      const exactData =
-        await exactResponse.json();
+
+      let exactData = null;
+
+
+      try {
+        exactData =
+          await exactResponse.json();
+      } catch {
+        exactData = null;
+      }
 
 
       /*
@@ -165,6 +333,7 @@ export default async function handler(req, res) {
 
       if (
         exactResponse.ok &&
+        exactData &&
         exactData.section
       ) {
 
@@ -179,84 +348,88 @@ export default async function handler(req, res) {
 
 
         /*
+          ----------------------------------------------
           VERIFIED JUDGMENTS
-          
-          First use judgments already attached to the
-          legal database response.
+          ----------------------------------------------
         */
 
         let judgments =
-          Array.isArray(exactData.judgments)
-            ? exactData.judgments.map(judgment => ({
+          Array.isArray(
+            exactData.judgments
+          )
 
-                verified: true,
+            ? exactData.judgments.map(
+                judgment => ({
 
-                caseName:
-                  judgment.title ||
-                  judgment.case_name ||
-                  null,
+                  verified: true,
 
-                court:
-                  judgment.court_name ||
-                  judgment.court ||
-                  null,
+                  caseName:
+                    judgment.title ||
+                    judgment.case_name ||
+                    null,
 
-                courtLevel:
-                  judgment.court_level ||
-                  judgment.court ||
-                  null,
+                  court:
+                    judgment.court_name ||
+                    judgment.court ||
+                    null,
 
-                date:
-                  judgment.date ||
-                  judgment.decision_date ||
-                  null,
+                  courtLevel:
+                    judgment.court_level ||
+                    judgment.court ||
+                    null,
 
-                citation:
-                  judgment.citation ||
-                  null,
+                  date:
+                    judgment.date ||
+                    judgment.decision_date ||
+                    null,
 
-                cnr:
-                  judgment.cnr ||
-                  null,
+                  citation:
+                    judgment.citation ||
+                    null,
 
-                precedentialValue:
-                  judgment.precedential_value ||
-                  null,
+                  cnr:
+                    judgment.cnr ||
+                    null,
 
-                courtMarking:
-                  judgment.court_marking ||
-                  null,
+                  precedentialValue:
+                    judgment.precedential_value ||
+                    null,
 
-                ratio:
-                  judgment.ratio_decidendi ||
-                  judgment.ratio ||
-                  null,
+                  courtMarking:
+                    judgment.court_marking ||
+                    null,
 
-                appliedToSection:
-                  judgment.applied_to_this_section ||
-                  null,
+                  ratio:
+                    judgment.ratio_decidendi ||
+                    judgment.ratio ||
+                    null,
 
-                basis:
-                  judgment.basis ||
-                  null,
+                  appliedToSection:
+                    judgment.applied_to_this_section ||
+                    null,
 
-                decidedUnder:
-                  judgment.decided_under ||
-                  null,
+                  basis:
+                    judgment.basis ||
+                    null,
 
-                source:
-                  judgment.url ||
-                  judgment.source ||
-                  null
+                  decidedUnder:
+                    judgment.decided_under ||
+                    null,
 
-              }))
+                  source:
+                    judgment.url ||
+                    judgment.source ||
+                    null
+
+                })
+              )
+
             : [];
 
 
         /*
-          IF THE SECTION ENDPOINT DID NOT RETURN
-          JUDGMENTS, CONNECT OUR VERIFIED
-          /api/judgments ENDPOINT.
+          If the exact provision did not contain
+          judgments, use LawBot's judgment endpoint.
         */
 
         if (judgments.length === 0) {
@@ -270,13 +443,19 @@ export default async function handler(req, res) {
             const host =
               req.headers.host;
 
+
             if (host) {
 
               const judgmentUrl =
                 `${protocol}://${host}/api/judgments?` +
                 new URLSearchParams({
-                  act: selectedAct.id,
-                  section: sectionNumber
+
+                  act:
+                    selectedAct.id,
+
+                  section:
+                    sectionNumber
+
                 }).toString();
 
 
@@ -291,83 +470,88 @@ export default async function handler(req, res) {
 
 
                 if (
-                  Array.isArray(judgmentData.judgments)
+                  Array.isArray(
+                    judgmentData.judgments
+                  )
                 ) {
 
                   judgments =
                     judgmentData.judgments
-                      .filter(judgment =>
-                        judgment &&
-                        judgment.verified !== false
+                      .filter(
+                        judgment =>
+                          judgment &&
+                          judgment.verified !== false
                       )
-                      .map(judgment => ({
+                      .map(
+                        judgment => ({
 
-                        verified: true,
+                          verified: true,
 
-                        caseName:
-                          judgment.caseName ||
-                          judgment.case_name ||
-                          judgment.title ||
-                          null,
+                          caseName:
+                            judgment.caseName ||
+                            judgment.case_name ||
+                            judgment.title ||
+                            null,
 
-                        court:
-                          judgment.court ||
-                          judgment.court_name ||
-                          null,
+                          court:
+                            judgment.court ||
+                            judgment.court_name ||
+                            null,
 
-                        courtLevel:
-                          judgment.courtLevel ||
-                          judgment.court_level ||
-                          null,
+                          courtLevel:
+                            judgment.courtLevel ||
+                            judgment.court_level ||
+                            null,
 
-                        date:
-                          judgment.date ||
-                          judgment.decision_date ||
-                          null,
+                          date:
+                            judgment.date ||
+                            judgment.decision_date ||
+                            null,
 
-                        citation:
-                          judgment.citation ||
-                          null,
+                          citation:
+                            judgment.citation ||
+                            null,
 
-                        cnr:
-                          judgment.cnr ||
-                          null,
+                          cnr:
+                            judgment.cnr ||
+                            null,
 
-                        precedentialValue:
-                          judgment.precedentialValue ||
-                          judgment.precedential_value ||
-                          null,
+                          precedentialValue:
+                            judgment.precedentialValue ||
+                            judgment.precedential_value ||
+                            null,
 
-                        courtMarking:
-                          judgment.courtMarking ||
-                          judgment.court_marking ||
-                          null,
+                          courtMarking:
+                            judgment.courtMarking ||
+                            judgment.court_marking ||
+                            null,
 
-                        ratio:
-                          judgment.ratio ||
-                          judgment.ratio_decidendi ||
-                          null,
+                          ratio:
+                            judgment.ratio ||
+                            judgment.ratio_decidendi ||
+                            null,
 
-                        appliedToSection:
-                          judgment.appliedToSection ||
-                          judgment.applied_to_this_section ||
-                          null,
+                          appliedToSection:
+                            judgment.appliedToSection ||
+                            judgment.applied_to_this_section ||
+                            null,
 
-                        basis:
-                          judgment.basis ||
-                          null,
+                          basis:
+                            judgment.basis ||
+                            null,
 
-                        decidedUnder:
-                          judgment.decidedUnder ||
-                          judgment.decided_under ||
-                          null,
+                          decidedUnder:
+                            judgment.decidedUnder ||
+                            judgment.decided_under ||
+                            null,
 
-                        source:
-                          judgment.source ||
-                          judgment.url ||
-                          null
+                          source:
+                            judgment.source ||
+                            judgment.url ||
+                            null
 
-                      }));
+                        })
+                      );
 
                 }
 
@@ -388,42 +572,78 @@ export default async function handler(req, res) {
 
 
         /*
-          STATUTORY TRANSITION / MAPPING
+          ----------------------------------------------
+          STATUTORY MAPPING
+          ----------------------------------------------
         */
 
         const correspondingProvisions =
-          Array.isArray(exactData.corresponds_to)
-            ? exactData.corresponds_to.map(item => ({
+          Array.isArray(
+            exactData.corresponds_to
+          )
 
-                act:
-                  item.act ||
-                  null,
+            ? exactData.corresponds_to.map(
+                item => ({
 
-                section:
-                  item.section ||
-                  item.number ||
-                  null,
+                  act:
+                    item.act ||
+                    null,
 
-                relation:
-                  item.relation ||
-                  null,
+                  section:
+                    item.section ||
+                    item.number ||
+                    null,
 
-                score:
-                  item.score ||
-                  null,
+                  relation:
+                    item.relation ||
+                    null,
 
-                url:
-                  item.url ||
-                  null
+                  score:
+                    item.score ??
+                    null,
 
-              }))
+                  url:
+                    item.url ||
+                    null
+
+                })
+              )
+
             : [];
 
 
         /*
+          ----------------------------------------------
+          CROSS REFERENCES
+          ----------------------------------------------
+        */
+
+        const crossReferences =
+          Array.isArray(
+            exactData.xrefs
+          )
+            ? exactData.xrefs
+            : [];
+
+
+        /*
+          ----------------------------------------------
+          OFFENCE CLASSIFICATION
+          ----------------------------------------------
+        */
+
+        const classification =
+          Array.isArray(
+            exactData.classification
+          )
+            ? exactData.classification
+            : [];
+
+
+        /*
+          ----------------------------------------------
           RETURN VERIFIED SECTION
-          + VERIFIED JUDGMENTS
-          + CORRESPONDING PROVISIONS
+          ----------------------------------------------
         */
 
         return res.status(200).json({
@@ -468,6 +688,10 @@ export default async function handler(req, res) {
               url:
                 sourceUrl,
 
+              classification,
+
+              crossReferences,
+
               judgments,
 
               judgmentCount:
@@ -488,7 +712,9 @@ export default async function handler(req, res) {
         EXACT ACT + SECTION NOT FOUND
       */
 
-      if (exactResponse.status === 404) {
+      if (
+        exactResponse.status === 404
+      ) {
 
         return res.status(404).json({
 
@@ -513,21 +739,24 @@ export default async function handler(req, res) {
 
 
     /*
-      GENERAL LEGAL SECTION SEARCH
-
-      Used for Acts not manually listed above.
+      --------------------------------------------------
+      GENERAL SECTION SEARCH
+      --------------------------------------------------
     */
 
     const apiUrl =
-      "https://indiacode.ecourtsindia.com/api/v1/search?" +
+      `${API_BASE}/search?` +
 
       new URLSearchParams({
 
-        q: query,
+        q:
+          query,
 
-        kind: "section",
+        kind:
+          "section",
 
-        limit: "40"
+        limit:
+          "40"
 
       }).toString();
 
@@ -536,16 +765,30 @@ export default async function handler(req, res) {
       await fetch(apiUrl);
 
 
-    const data =
-      await response.json();
+    let data = null;
+
+
+    try {
+
+      data =
+        await response.json();
+
+    } catch {
+
+      data = {};
+
+    }
 
 
     if (!response.ok) {
 
-      return res.status(response.status).json({
+      return res.status(
+        response.status
+      ).json({
 
         error:
           data.error ||
+          data.message ||
           "Legal section search failed"
 
       });
@@ -554,21 +797,24 @@ export default async function handler(req, res) {
 
 
     const results =
-      Array.isArray(data.results)
+      Array.isArray(
+        data.results
+      )
         ? data.results
         : [];
 
 
     /*
-      CONVERT SEARCH RESULTS
+      --------------------------------------------------
+      CONVERT GENERAL SEARCH RESULTS
+      --------------------------------------------------
     */
 
     const sections =
       results.map(result => {
 
         let actId = null;
-
-        let section = null;
+        let sectionNumberFromUrl = null;
 
 
         if (result.url) {
@@ -584,7 +830,7 @@ export default async function handler(req, res) {
             actId =
               match[1];
 
-            section =
+            sectionNumberFromUrl =
               decodeURIComponent(
                 match[2]
               );
@@ -613,11 +859,15 @@ export default async function handler(req, res) {
           section:
             result.section ||
             result.number ||
-            section ||
+            sectionNumberFromUrl ||
             null,
 
           heading:
             result.heading ||
+            null,
+
+          text:
+            result.text ||
             null,
 
           snippet:
@@ -632,7 +882,11 @@ export default async function handler(req, res) {
 
           judgmentCount: 0,
 
-          correspondingProvisions: []
+          correspondingProvisions: [],
+
+          classification: [],
+
+          crossReferences: []
 
         };
 
@@ -640,12 +894,14 @@ export default async function handler(req, res) {
 
 
     /*
-      RETURN GENERAL SEARCH RESULTS
+      --------------------------------------------------
+      RETURN GENERAL SEARCH
+      --------------------------------------------------
     */
 
     return res.status(200).json({
 
-      verified: true,
+      verified: sections.length > 0,
 
       query,
 
@@ -667,6 +923,7 @@ export default async function handler(req, res) {
       "LawBot sections error:",
       error
     );
+
 
     return res.status(500).json({
 
