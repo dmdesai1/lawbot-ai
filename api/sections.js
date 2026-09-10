@@ -1,3 +1,4 @@
+
 export default async function handler(req, res) {
 
   if (req.method !== "GET" && req.method !== "POST") {
@@ -8,11 +9,9 @@ export default async function handler(req, res) {
 
   try {
 
-    /*
-      --------------------------------------------------
-      GET QUERY
-      --------------------------------------------------
-    */
+    // --------------------------------------------------
+    // GET QUERY
+    // --------------------------------------------------
 
     let query = "";
 
@@ -32,17 +31,15 @@ export default async function handler(req, res) {
       });
     }
 
-
     const q = query.toLowerCase();
 
+    const API_BASE =
+      "https://indiacode.ecourtsindia.com/api/v1";
 
-    /*
-      --------------------------------------------------
-      KNOWN ACT ALIASES
-      --------------------------------------------------
-      These are shortcuts only.
-      Unknown Acts will be discovered dynamically.
-    */
+
+    // --------------------------------------------------
+    // KNOWN ACT ALIASES
+    // --------------------------------------------------
 
     const actMap = [
 
@@ -116,11 +113,9 @@ export default async function handler(req, res) {
     ];
 
 
-    /*
-      --------------------------------------------------
-      FIND KNOWN ACT
-      --------------------------------------------------
-    */
+    // --------------------------------------------------
+    // FIND KNOWN ACT
+    // --------------------------------------------------
 
     let selectedAct =
       actMap.find(act =>
@@ -130,11 +125,9 @@ export default async function handler(req, res) {
       ) || null;
 
 
-    /*
-      --------------------------------------------------
-      DETECT SECTION
-      --------------------------------------------------
-    */
+    // --------------------------------------------------
+    // DETECT SECTION
+    // --------------------------------------------------
 
     const sectionMatch =
       q.match(
@@ -147,140 +140,264 @@ export default async function handler(req, res) {
         /\b(?:NI\s*ACT|N\.I\.\s*ACT)\s*[-:]?\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
       );
 
-
     const sectionNumber =
       sectionMatch
         ? sectionMatch[1]
         : null;
 
 
-    const API_BASE =
-      "https://indiacode.ecourtsindia.com/api/v1";
+    // --------------------------------------------------
+    // BUILD ACT SEARCH QUERY
+    // --------------------------------------------------
+    // Remove the legal-question wording and section number
+    // so the Acts endpoint can match the Act's short title.
+
+    function buildActSearchQuery(input) {
+
+      let value = String(input || "");
+
+      value = value
+        .replace(
+          /\b(?:what\s+is|what's|explain|explain\s+section|tell\s+me|give\s+me|show\s+me|define|meaning\s+of)\b/gi,
+          " "
+        )
+        .replace(
+          /\b(?:section|sec\.?)\s*[0-9]+(?:[a-z]|-[a-z0-9]+)?\b/gi,
+          " "
+        )
+        .replace(
+          /\b(?:article)\s*[0-9]+(?:[a-z]|-[a-z0-9]+)?\b/gi,
+          " "
+        )
+        .replace(
+          /\b(?:of|under|in|the|please|regarding|related\s+to)\b/gi,
+          " "
+        )
+        .replace(
+          /[?.,:;()[\]{}]/g,
+          " "
+        )
+        .replace(/\s+/g, " ")
+        .trim();
+
+      return value;
+    }
 
 
-    /*
-      --------------------------------------------------
-      DYNAMIC ACT DISCOVERY
-      --------------------------------------------------
-      If the Act isn't one of our known aliases,
-      search the legal database itself.
-    */
+    // --------------------------------------------------
+    // DYNAMIC ACT DISCOVERY
+    // --------------------------------------------------
+    // IMPORTANT:
+    // Act is identified BEFORE searching for the section.
+    // This prevents Section 66 Companies Act being selected
+    // when the user actually asked for IT Act Section 66.
 
     if (!selectedAct) {
 
+      const actSearchQuery =
+        buildActSearchQuery(query);
+
       try {
 
-        const searchUrl =
-          `${API_BASE}/search?` +
+        let candidates = [];
+
+
+        // ----------------------------------------------
+        // FIRST: /acts?q=
+        // ----------------------------------------------
+
+        const actsUrl =
+          `${API_BASE}/acts?` +
           new URLSearchParams({
-            q: query,
-            kind: "section",
-            limit: "40"
+            q: actSearchQuery,
+            limit: "50"
           }).toString();
 
+        const actsResponse =
+          await fetch(actsUrl);
 
-        const searchResponse =
-          await fetch(searchUrl);
+        if (actsResponse.ok) {
 
+          const actsData =
+            await actsResponse.json();
 
-        if (searchResponse.ok) {
-
-          const searchData =
-            await searchResponse.json();
-
-
-          const results =
-            Array.isArray(searchData.results)
-              ? searchData.results
-              : [];
-
-
-          /*
-            Prefer a result matching the requested
-            section number.
-          */
-
-          let candidate =
-            sectionNumber
-              ? results.find(result => {
-
-                  return String(
-                    result.section ||
-                    result.number ||
-                    ""
-                  ).toLowerCase() ===
-                    String(
-                      sectionNumber
-                    ).toLowerCase();
-
-                })
-              : results[0];
-
-
-          /*
-            If no exact section match was found,
-            use the first useful result.
-          */
-
-          if (!candidate) {
-            candidate = results[0];
+          if (Array.isArray(actsData.acts)) {
+            candidates =
+              candidates.concat(
+                actsData.acts
+              );
           }
+        }
 
 
-          if (candidate) {
+        // ----------------------------------------------
+        // SECOND: /search?kind=act
+        // ----------------------------------------------
 
-            let discoveredActId = null;
+        if (candidates.length === 0) {
 
+          const actSearchUrl =
+            `${API_BASE}/search?` +
+            new URLSearchParams({
+              q: actSearchQuery,
+              kind: "act",
+              limit: "50"
+            }).toString();
 
-            /*
-              Extract Act ID from source URL.
-            */
+          const actSearchResponse =
+            await fetch(actSearchUrl);
 
-            if (candidate.url) {
+          if (actSearchResponse.ok) {
 
-              const urlMatch =
-                candidate.url.match(
-                  /\/([^/]+)\/section\/([^/?#]+)/i
+            const actSearchData =
+              await actSearchResponse.json();
+
+            if (
+              Array.isArray(
+                actSearchData.results
+              )
+            ) {
+
+              candidates =
+                actSearchData.results.map(
+                  result => ({
+                    id:
+                      result.id ||
+                      result.act_id ||
+                      result.actId ||
+                      null,
+
+                    short_title:
+                      result.short_title ||
+                      result.act_title ||
+                      result.actTitle ||
+                      result.title ||
+                      "",
+
+                    url:
+                      result.url ||
+                      null
+                  })
                 );
 
+            }
 
-              if (urlMatch) {
-                discoveredActId =
-                  urlMatch[1];
+          }
+
+        }
+
+
+        // ----------------------------------------------
+        // SCORE ACT CANDIDATES
+        // ----------------------------------------------
+
+        if (candidates.length > 0) {
+
+          const wanted =
+            actSearchQuery
+              .toLowerCase()
+              .replace(/\bthe\b/g, "")
+              .replace(/[^\w\s-]/g, " ")
+              .replace(/\s+/g, " ")
+              .trim();
+
+          const wantedWords =
+            wanted
+              .split(" ")
+              .filter(word =>
+                word.length > 2
+              );
+
+
+          let bestCandidate = null;
+          let bestScore = -1;
+
+
+          for (const candidate of candidates) {
+
+            const title =
+              String(
+                candidate.short_title ||
+                candidate.title ||
+                candidate.act_title ||
+                ""
+              )
+                .toLowerCase()
+                .replace(/[^\w\s-]/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+
+            if (!title) {
+              continue;
+            }
+
+
+            let score = 0;
+
+
+            // Exact phrase match
+            if (
+              wanted &&
+              title.includes(wanted)
+            ) {
+              score += 100;
+            }
+
+
+            // Individual word matches
+            for (const word of wantedWords) {
+
+              if (title.includes(word)) {
+                score += 10;
               }
 
             }
 
 
-            /*
-              Some search results may expose
-              the Act directly.
-            */
-
-            discoveredActId =
-              discoveredActId ||
-              candidate.act_id ||
-              candidate.actId ||
-              null;
+            // Prefer exact IT Act / POCSO / NDPS style matches
+            if (
+              title === wanted
+            ) {
+              score += 200;
+            }
 
 
-            if (discoveredActId) {
+            if (score > bestScore) {
 
-              selectedAct = {
+              bestScore = score;
 
-                id:
-                  discoveredActId,
-
-                name:
-                  candidate.act ||
-                  candidate.act_title ||
-                  candidate.actTitle ||
-                  candidate.title ||
-                  discoveredActId
-
-              };
+              bestCandidate =
+                candidate;
 
             }
+
+          }
+
+
+          if (
+            bestCandidate &&
+            (
+              bestCandidate.id ||
+              bestCandidate.act_id ||
+              bestCandidate.actId
+            )
+          ) {
+
+            selectedAct = {
+
+              id:
+                bestCandidate.id ||
+                bestCandidate.act_id ||
+                bestCandidate.actId,
+
+              name:
+                bestCandidate.short_title ||
+                bestCandidate.title ||
+                bestCandidate.act_title ||
+                bestCandidate.actTitle ||
+                bestCandidate.id
+
+            };
 
           }
 
@@ -298,14 +415,14 @@ export default async function handler(req, res) {
     }
 
 
-    /*
-      --------------------------------------------------
-      IF ACT IS KNOWN + SECTION IS KNOWN
-      GET EXACT PROVISION
-      --------------------------------------------------
-    */
+    // --------------------------------------------------
+    // EXACT PROVISION
+    // --------------------------------------------------
 
-    if (selectedAct && sectionNumber) {
+    if (
+      selectedAct &&
+      sectionNumber
+    ) {
 
       const exactUrl =
         `${API_BASE}/${selectedAct.id}/section/` +
@@ -320,16 +437,20 @@ export default async function handler(req, res) {
 
 
       try {
+
         exactData =
           await exactResponse.json();
+
       } catch {
+
         exactData = null;
+
       }
 
 
-      /*
-        EXACT PROVISION FOUND
-      */
+      // ----------------------------------------------
+      // EXACT PROVISION FOUND
+      // ----------------------------------------------
 
       if (
         exactResponse.ok &&
@@ -347,17 +468,14 @@ export default async function handler(req, res) {
           `https://indiacode.ecourtsindia.com/${selectedAct.id}/section/${sectionNumber}/`;
 
 
-        /*
-          ----------------------------------------------
-          VERIFIED JUDGMENTS
-          ----------------------------------------------
-        */
+        // --------------------------------------------
+        // VERIFIED JUDGMENTS
+        // --------------------------------------------
 
         let judgments =
           Array.isArray(
             exactData.judgments
           )
-
             ? exactData.judgments.map(
                 judgment => ({
 
@@ -423,14 +541,12 @@ export default async function handler(req, res) {
 
                 })
               )
-
             : [];
 
 
-        /*
-          If the exact provision did not contain
-          judgments, use LawBot's judgment endpoint.
-        */
+        // --------------------------------------------
+        // LAWBot JUDGMENT FALLBACK
+        // --------------------------------------------
 
         if (judgments.length === 0) {
 
@@ -571,17 +687,14 @@ export default async function handler(req, res) {
         }
 
 
-        /*
-          ----------------------------------------------
-          STATUTORY MAPPING
-          ----------------------------------------------
-        */
+        // --------------------------------------------
+        // STATUTORY MAPPING
+        // --------------------------------------------
 
         const correspondingProvisions =
           Array.isArray(
             exactData.corresponds_to
           )
-
             ? exactData.corresponds_to.map(
                 item => ({
 
@@ -608,15 +721,12 @@ export default async function handler(req, res) {
 
                 })
               )
-
             : [];
 
 
-        /*
-          ----------------------------------------------
-          CROSS REFERENCES
-          ----------------------------------------------
-        */
+        // --------------------------------------------
+        // CROSS REFERENCES
+        // --------------------------------------------
 
         const crossReferences =
           Array.isArray(
@@ -626,11 +736,9 @@ export default async function handler(req, res) {
             : [];
 
 
-        /*
-          ----------------------------------------------
-          OFFENCE CLASSIFICATION
-          ----------------------------------------------
-        */
+        // --------------------------------------------
+        // CLASSIFICATION
+        // --------------------------------------------
 
         const classification =
           Array.isArray(
@@ -640,11 +748,9 @@ export default async function handler(req, res) {
             : [];
 
 
-        /*
-          ----------------------------------------------
-          RETURN VERIFIED SECTION
-          ----------------------------------------------
-        */
+        // --------------------------------------------
+        // RETURN VERIFIED SECTION
+        // --------------------------------------------
 
         return res.status(200).json({
 
@@ -708,9 +814,9 @@ export default async function handler(req, res) {
       }
 
 
-      /*
-        EXACT ACT + SECTION NOT FOUND
-      */
+      // ----------------------------------------------
+      // ACT FOUND BUT SECTION DOES NOT EXIST
+      // ----------------------------------------------
 
       if (
         exactResponse.status === 404
@@ -738,15 +844,12 @@ export default async function handler(req, res) {
     }
 
 
-    /*
-      --------------------------------------------------
-      GENERAL SECTION SEARCH
-      --------------------------------------------------
-    */
+    // --------------------------------------------------
+    // GENERAL SECTION SEARCH
+    // --------------------------------------------------
 
     const apiUrl =
       `${API_BASE}/search?` +
-
       new URLSearchParams({
 
         q:
@@ -804,11 +907,9 @@ export default async function handler(req, res) {
         : [];
 
 
-    /*
-      --------------------------------------------------
-      CONVERT GENERAL SEARCH RESULTS
-      --------------------------------------------------
-    */
+    // --------------------------------------------------
+    // CONVERT GENERAL SEARCH RESULTS
+    // --------------------------------------------------
 
     const sections =
       results.map(result => {
@@ -893,15 +994,14 @@ export default async function handler(req, res) {
       });
 
 
-    /*
-      --------------------------------------------------
-      RETURN GENERAL SEARCH
-      --------------------------------------------------
-    */
+    // --------------------------------------------------
+    // RETURN GENERAL SEARCH
+    // --------------------------------------------------
 
     return res.status(200).json({
 
-      verified: sections.length > 0,
+      verified:
+        sections.length > 0,
 
       query,
 
