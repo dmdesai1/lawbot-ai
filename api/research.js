@@ -1,14 +1,27 @@
-
 // api/research.js
 
 const API_BASE = "https://indiacode.ecourtsindia.com/api/v1";
 
-function clean(value) {
-  return String(value || "").trim();
+const ACTS = [
+  { id: "ipc", names: ["ipc", "indian penal code", "penal code"] },
+  { id: "bns", names: ["bns", "bharatiya nyaya sanhita"] },
+  { id: "crpc", names: ["crpc", "code of criminal procedure", "criminal procedure code"] },
+  { id: "bnss", names: ["bnss", "bharatiya nagarik suraksha sanhita"] },
+  { id: "cpc", names: ["cpc", "code of civil procedure"] },
+  { id: "bsa", names: ["bsa", "bharatiya sakshya adhiniyam"] },
+  { id: "evidence-act", names: ["evidence act", "indian evidence act"] },
+  { id: "ni-act", names: ["ni act", "negotiable instruments act", "cheque bounce", "cheque dishonour"] },
+  { id: "it-act", names: ["it act", "information technology act", "information technology act 2000"] },
+  { id: "pocso", names: ["pocso", "pocso act", "protection of children from sexual offences act"] },
+  { id: "ndps-act", names: ["ndps", "ndps act", "narcotic drugs and psychotropic substances act"] }
+];
+
+function clean(v) {
+  return String(v || "").trim();
 }
 
-function lower(value) {
-  return clean(value).toLowerCase();
+function lower(v) {
+  return clean(v).toLowerCase();
 }
 
 async function getJson(url) {
@@ -21,127 +34,25 @@ async function getJson(url) {
   }
 }
 
-/* ---------------------------------------------------------
-   KNOWN ACTS
---------------------------------------------------------- */
+/* ---------------- ACT DETECTION ---------------- */
 
-const ACTS = [
-  {
-    id: "ipc",
-    names: [
-      "ipc",
-      "indian penal code",
-      "penal code",
-      "indian penal code 1860"
-    ]
-  },
-  {
-    id: "bns",
-    names: [
-      "bns",
-      "bharatiya nyaya sanhita",
-      "bharatiya nyaya sanhita 2023"
-    ]
-  },
-  {
-    id: "crpc",
-    names: [
-      "crpc",
-      "code of criminal procedure",
-      "criminal procedure code"
-    ]
-  },
-  {
-    id: "bnss",
-    names: [
-      "bnss",
-      "bharatiya nagarik suraksha sanhita",
-      "bharatiya nagarik suraksha sanhita 2023"
-    ]
-  },
-  {
-    id: "evidence-act",
-    names: [
-      "evidence act",
-      "indian evidence act",
-      "indian evidence act 1872"
-    ]
-  },
-  {
-    id: "bsa",
-    names: [
-      "bsa",
-      "bharatiya sakshya adhiniyam",
-      "bharatiya sakshya adhiniyam 2023"
-    ]
-  },
-  {
-    id: "cpc",
-    names: [
-      "cpc",
-      "code of civil procedure",
-      "civil procedure code"
-    ]
-  },
-  {
-    id: "ni-act",
-    names: [
-      "ni act",
-      "negotiable instruments act",
-      "negotiable instruments act 1881",
-      "cheque bounce",
-      "cheque dishonour"
-    ]
-  },
-  {
-    id: "it-act",
-    names: [
-      "it act",
-      "information technology act",
-      "information technology act 2000",
-      "information technology act, 2000",
-      "information technology law"
-    ]
-  },
-  {
-    id: "pocso",
-    names: [
-      "pocso",
-      "pocso act",
-      "protection of children from sexual offences act"
-    ]
-  },
-  {
-    id: "ndps-act",
-    names: [
-      "ndps",
-      "ndps act",
-      "narcotic drugs and psychotropic substances act"
-    ]
-  }
-];
-
-/* ---------------------------------------------------------
-   DETECT ACTS
---------------------------------------------------------- */
-
-function detectKnownActs(query) {
+function detectActs(query) {
   const q = lower(query);
   const found = [];
 
   for (const act of ACTS) {
-    let best = "";
+    let matched = "";
 
     for (const name of act.names) {
-      if (q.includes(name) && name.length > best.length) {
-        best = name;
+      if (q.includes(name) && name.length > matched.length) {
+        matched = name;
       }
     }
 
-    if (best) {
+    if (matched) {
       found.push({
         id: act.id,
-        matched: best
+        matched
       });
     }
   }
@@ -149,128 +60,76 @@ function detectKnownActs(query) {
   return found;
 }
 
-/* ---------------------------------------------------------
-   DETECT SECTION REFERENCES
-   Supports:
-   Section 302 IPC
-   IPC Section 302
-   IPC 302
-   Section 66 Information Technology Act
-   Information Technology Act Section 66
---------------------------------------------------------- */
+/* ---------------- SECTION DETECTION ---------------- */
 
-function extractSectionNumbers(query) {
-  const q = clean(query);
+function sectionsInText(query) {
+  const result = [];
 
   const patterns = [
     /\bsection\s+([0-9]+[A-Za-z-]*)\b/gi,
     /\bsec\.?\s+([0-9]+[A-Za-z-]*)\b/gi
   ];
 
-  const results = [];
-
   for (const regex of patterns) {
     let m;
 
-    while ((m = regex.exec(q)) !== null) {
-      if (!results.includes(m[1])) {
-        results.push(m[1]);
+    while ((m = regex.exec(query)) !== null) {
+      if (!result.includes(m[1])) {
+        result.push(m[1]);
       }
     }
   }
 
-  return results;
+  return result;
 }
 
-/* ---------------------------------------------------------
-   ACT + SECTION PAIR DETECTION
---------------------------------------------------------- */
+/* ---------------- EXACT ACT + SECTION PAIRS ---------------- */
 
-function detectExplicitPairs(query) {
-  const q = clean(query);
-  const qLower = lower(query);
-
+function detectPairs(query) {
+  const q = lower(query);
   const pairs = [];
-  const knownActs = detectKnownActs(query);
-
-  /*
-    First look for patterns such as:
-
-    IPC 302
-    BNS 103
-    CrPC 154
-    IT Act 66
-  */
-
-  for (const act of knownActs) {
-    for (const name of act.matched ? [act.matched] : []) {
-      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-      const patterns = [
-        new RegExp(
-          "\\b" + escaped + "\\s+(?:section\\s*)?([0-9]+[A-Za-z-]*)\\b",
-          "i"
-        ),
-        new RegExp(
-          "\\bsection\\s+([0-9]+[A-Za-z-]*)\\s+(?:of\\s+)?(?:" +
-            escaped +
-            ")\\b",
-          "i"
-        )
-      ];
-
-      for (const regex of patterns) {
-        const match = q.match(regex);
-
-        if (match && match[1]) {
-          const section = match[1];
-
-          if (
-            !pairs.some(
-              p => p.act === act.id && p.section === section
-            )
-          ) {
-            pairs.push({
-              act: act.id,
-              section
-            });
-          }
-        }
-      }
-    }
-  }
-
-  /*
-    Special handling for common shorthand:
-    "IPC 302 vs BNS 103"
-  */
 
   const shorthand = [
-    ["ipc", /\bipc\s+([0-9]+[A-Za-z-]*)\b/gi],
-    ["bns", /\bbns\s+([0-9]+[A-Za-z-]*)\b/gi],
-    ["crpc", /\bcrpc\s+([0-9]+[A-Za-z-]*)\b/gi],
-    ["bnss", /\bbnss\s+([0-9]+[A-Za-z-]*)\b/gi],
-    ["cpc", /\bcpc\s+([0-9]+[A-Za-z-]*)\b/gi],
-    ["bsa", /\bbsa\s+([0-9]+[A-Za-z-]*)\b/gi],
-    ["pocso", /\bpocso\s+([0-9]+[A-Za-z-]*)\b/gi],
-    ["it-act", /\bit\s+act\s+([0-9]+[A-Za-z-]*)\b/gi],
-    ["ni-act", /\bni\s+act\s+([0-9]+[A-Za-z-]*)\b/gi]
+    ["ipc", /\bipc\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi],
+    ["bns", /\bbns\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi],
+    ["crpc", /\bcrpc\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi],
+    ["bnss", /\bbnss\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi],
+    ["cpc", /\bcpc\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi],
+    ["bsa", /\bbsa\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi],
+    ["pocso", /\bpocso\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi],
+    ["it-act", /\bit\s+act\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi],
+    ["ni-act", /\bni\s+act\s+(?:section\s*)?([0-9]+[A-Za-z-]*)\b/gi]
   ];
 
   for (const [act, regex] of shorthand) {
     let m;
 
-    while ((m = regex.exec(qLower)) !== null) {
-      const section = m[1];
-
-      if (
-        !pairs.some(
-          p => p.act === act && p.section === section
-        )
-      ) {
+    while ((m = regex.exec(q)) !== null) {
+      if (!pairs.some(x => x.act === act && x.section === m[1])) {
         pairs.push({
           act,
-          section
+          section: m[1]
+        });
+      }
+    }
+  }
+
+  const acts = detectActs(query);
+  const sections = sectionsInText(query);
+
+  if (acts.length && sections.length) {
+    /*
+      For a single explicit Act + natural language section query:
+      "Section 66 of the Information Technology Act..."
+    */
+    if (acts.length === 1 && sections.length === 1) {
+      if (!pairs.some(
+        x => x.act === acts[0].id &&
+             x.section === sections[0]
+      )) {
+        pairs.push({
+          act: acts[0].id,
+          section: sections[0]
         });
       }
     }
@@ -279,115 +138,64 @@ function detectExplicitPairs(query) {
   return pairs;
 }
 
-/* ---------------------------------------------------------
-   DYNAMIC ACT DISCOVERY
---------------------------------------------------------- */
+/* ---------------- DYNAMIC ACT DISCOVERY ---------------- */
 
 async function discoverAct(query) {
-  const q = clean(query);
+  const cleaned = query
+    .replace(/\bsection\s+[0-9]+[A-Za-z-]*\b/gi, "")
+    .replace(/\bsec\.?\s+[0-9]+[A-Za-z-]*\b/gi, "")
+    .trim();
 
-  if (!q) return null;
+  if (!cleaned) return null;
 
-  const actsUrl =
+  let data = await getJson(
     API_BASE +
     "/acts?q=" +
-    encodeURIComponent(q) +
-    "&limit=20";
+    encodeURIComponent(cleaned) +
+    "&limit=20"
+  );
 
-  const actsData = await getJson(actsUrl);
-
-  if (actsData?.acts?.length) {
-    return chooseBestAct(actsData.acts, q);
+  if (data?.acts?.length) {
+    return data.acts[0];
   }
 
-  const searchUrl =
+  data = await getJson(
     API_BASE +
     "/search?kind=act&q=" +
-    encodeURIComponent(q) +
-    "&limit=20";
-
-  const searchData = await getJson(searchUrl);
+    encodeURIComponent(cleaned) +
+    "&limit=20"
+  );
 
   const results =
-    searchData?.results ||
-    searchData?.hits ||
-    searchData?.search_results ||
+    data?.results ||
+    data?.hits ||
     [];
 
-  if (results.length) {
-    return chooseBestAct(results, q);
-  }
-
-  return null;
+  return results[0] || null;
 }
 
-function chooseBestAct(acts, query) {
-  const q = lower(query);
+/* ---------------- EXACT PROVISION ---------------- */
 
-  let best = null;
-  let bestScore = -1;
-
-  for (const item of acts) {
-    const title = lower(
-      item.short_title ||
-      item.title ||
-      item.name ||
-      ""
-    );
-
-    const id = lower(item.id || item.act_id || "");
-
-    let score = 0;
-
-    if (title && q.includes(title)) score += 100;
-    if (id && q.includes(id)) score += 80;
-
-    const words = q
-      .split(/\s+/)
-      .filter(w => w.length > 3);
-
-    for (const word of words) {
-      if (title.includes(word)) score += 5;
-    }
-
-    if (score > bestScore) {
-      bestScore = score;
-      best = item;
-    }
-  }
-
-  return best;
-}
-
-/* ---------------------------------------------------------
-   GET EXACT PROVISION
---------------------------------------------------------- */
-
-async function getExactProvision(act, section) {
-  if (!act || !section) return null;
-
-  const url =
+async function exactProvision(act, section) {
+  return await getJson(
     API_BASE +
     "/" +
     encodeURIComponent(act) +
     "/section/" +
-    encodeURIComponent(section);
-
-  return await getJson(url);
+    encodeURIComponent(section)
+  );
 }
 
-/* ---------------------------------------------------------
-   GET JUDGMENTS
---------------------------------------------------------- */
+/* ---------------- EXACT JUDGMENTS ---------------- */
 
-async function getJudgments(act, section, query = "") {
+async function exactJudgments(act, section, query) {
   const url =
     API_BASE +
     "/judgments?act=" +
     encodeURIComponent(act) +
     "&section=" +
     encodeURIComponent(section) +
-    "&limit=20";
+    "&limit=30";
 
   const data = await getJson(url);
 
@@ -396,191 +204,131 @@ async function getJudgments(act, section, query = "") {
   }
 
   /*
-    Fallback to our own judgment API.
+    Fallback to LawBot's judgment endpoint.
   */
-
   try {
-    const ownUrl =
+    const r = await fetch(
       "/api/judgments?act=" +
       encodeURIComponent(act) +
       "&section=" +
       encodeURIComponent(section) +
       "&query=" +
-      encodeURIComponent(query);
-
-    const r = await fetch(ownUrl);
+      encodeURIComponent(query)
+    );
 
     if (r.ok) {
-      const own = await r.json();
+      const d = await r.json();
 
-      return (
-        own.judgments ||
-        own.results ||
-        []
-      );
+      return d.judgments ||
+             d.results ||
+             [];
     }
   } catch {}
 
   return [];
 }
 
-/* ---------------------------------------------------------
-   NORMALIZE PROVISION
---------------------------------------------------------- */
+/* ---------------- RETRIEVE ---------------- */
 
-function normalizeProvision(data, act, section) {
-  if (!data) return null;
+async function retrieve(pair, query) {
+  const data = await exactProvision(
+    pair.act,
+    pair.section
+  );
 
-  const sectionData =
-    data.section ||
-    data.provision ||
-    data;
-
-  const actData =
-    data.act ||
-    {};
-
-  return {
-    act: act,
-    actTitle:
-      actData.short_title ||
-      actData.title ||
-      actData.name ||
-      act,
-
-    section:
-      sectionData.number ||
-      section,
-
-    heading:
-      sectionData.heading ||
-      "",
-
-    text:
-      sectionData.text ||
-      sectionData.body ||
-      sectionData.content ||
-      "",
-
-    classification:
-      data.classification ||
-      [],
-
-    correspondsTo:
-      data.corresponds_to ||
-      data.corresponding_provisions ||
-      [],
-
-    crossReferences:
-      data.cross_references ||
-      data.crossReferences ||
-      [],
-
-    judgments:
-      data.judgments ||
-      [],
-
-    source:
-      data.url ||
-      `https://indiacode.ecourtsindia.com/${act}/section/${section}/`
-  };
-}
-
-/* ---------------------------------------------------------
-   RETRIEVE ONE ACT/SECTION
---------------------------------------------------------- */
-
-async function retrievePair(pair, query) {
-  let act = pair.act;
-  let section = pair.section;
-
-  const exact = await getExactProvision(act, section);
-
-  if (!exact) {
+  if (!data) {
     return {
-      requestedAct: act,
-      requestedSection: section,
+      act: pair.act,
+      section: pair.section,
       found: false,
       provision: null,
       judgments: []
     };
   }
 
-  const provision = normalizeProvision(
-    exact,
-    act,
-    section
-  );
+  const s = data.section || data.provision || data;
+  const a = data.act || {};
 
-  let judgments = await getJudgments(
-    act,
-    section,
-    query
-  );
+  const provision = {
+    act: pair.act,
+    actTitle:
+      a.short_title ||
+      a.title ||
+      a.name ||
+      pair.act,
 
-  if (
-    (!judgments || !judgments.length) &&
-    provision.judgments?.length
-  ) {
-    judgments = provision.judgments;
-  }
+    section:
+      s.number ||
+      pair.section,
+
+    heading:
+      s.heading ||
+      "",
+
+    text:
+      s.text ||
+      s.body ||
+      s.content ||
+      "",
+
+    classification:
+      data.classification || [],
+
+    correspondsTo:
+      data.corresponds_to ||
+      [],
+
+    crossReferences:
+      data.cross_references ||
+      [],
+
+    source:
+      data.url ||
+      `https://indiacode.ecourtsindia.com/${pair.act}/section/${pair.section}/`
+  };
+
+  let judgments =
+    await exactJudgments(
+      pair.act,
+      pair.section,
+      query
+    );
+
+  /*
+    IMPORTANT:
+    Only judgments actually returned by the database/API
+    are passed to Gemini.
+  */
+
+  judgments = Array.isArray(judgments)
+    ? judgments.slice(0, 30)
+    : [];
 
   return {
-    requestedAct: act,
-    requestedSection: section,
+    act: pair.act,
+    section: pair.section,
     found: true,
     provision,
     judgments
   };
 }
 
-/* ---------------------------------------------------------
-   SINGLE-ACT NATURAL LANGUAGE RESOLUTION
---------------------------------------------------------- */
+/* ---------------- NATURAL LANGUAGE ---------------- */
 
-async function resolveNaturalLanguagePair(query) {
-  const sections = extractSectionNumbers(query);
+async function naturalPair(query) {
+  const sections = sectionsInText(query);
+  const acts = detectActs(query);
 
   if (!sections.length) return [];
 
-  const knownActs = detectKnownActs(query);
-
-  /*
-    If a known Act is present but pair detection failed,
-    use the first section number with that Act.
-  */
-
-  if (knownActs.length) {
-    const act = knownActs[0].id;
-
-    return [
-      {
-        act,
-        section: sections[0]
-      }
-    ];
+  if (acts.length) {
+    return [{
+      act: acts[0].id,
+      section: sections[0]
+    }];
   }
 
-  /*
-    Dynamic Act discovery.
-
-    Remove section wording before searching for the Act,
-    so "Section 66 ... unauthorized access" does not cause
-    an unrelated Act to win.
-  */
-
-  let actSearchText = query
-    .replace(
-      /\bsection\s+[0-9]+[A-Za-z-]*\b/gi,
-      ""
-    )
-    .replace(
-      /\bsec\.?\s+[0-9]+[A-Za-z-]*\b/gi,
-      ""
-    )
-    .trim();
-
-  const discovered = await discoverAct(actSearchText);
+  const discovered = await discoverAct(query);
 
   if (!discovered) return [];
 
@@ -591,125 +339,173 @@ async function resolveNaturalLanguagePair(query) {
 
   if (!act) return [];
 
-  return [
-    {
-      act,
-      section: sections[0]
-    }
-  ];
+  return [{
+    act,
+    section: sections[0]
+  }];
 }
 
-/* ---------------------------------------------------------
-   FORMAT MATERIAL FOR GEMINI
---------------------------------------------------------- */
+/* ---------------- GEMINI MATERIAL ---------------- */
 
-function buildResearchMaterial(results) {
-  return results
-    .map((result, index) => {
-      if (!result.found || !result.provision) {
-        return `
-SOURCE ${index + 1}
-Requested Act: ${result.requestedAct}
-Requested Section: ${result.requestedSection}
-STATUS: NOT FOUND
-`;
-      }
-
-      const p = result.provision;
-
-      const judgments = (result.judgments || [])
-        .slice(0, 12)
-        .map((j, i) => {
-          return `
-Judgment ${i + 1}
-Case: ${j.title || j.caseName || ""}
-Court: ${j.court_name || j.court || ""}
-Date: ${j.date || ""}
-Citation: ${j.citation || ""}
-CNR: ${j.cnr || ""}
-Applied to section: ${j.applied_to_this_section || j.appliedToSection || ""}
-Basis: ${j.basis || ""}
-Ratio: ${j.ratio_decidendi || j.ratio || ""}
-Decision: ${j.decision || ""}
-Source: ${j.url || ""}
-`;
-        })
-        .join("\n");
-
+function material(results) {
+  return results.map((r, index) => {
+    if (!r.found) {
       return `
 SOURCE ${index + 1}
 
-Act:
+ACT: ${r.act}
+SECTION: ${r.section}
+
+STATUS: PROVISION NOT RETRIEVED.
+`;
+    }
+
+    const p = r.provision;
+
+    const judgments =
+      (r.judgments || [])
+        .map((j, i) => `
+JUDGMENT ${i + 1}
+
+Case:
+${j.title || j.caseName || ""}
+
+Court:
+${j.court_name || j.court || ""}
+
+Date:
+${j.date || ""}
+
+Citation:
+${j.citation || ""}
+
+CNR:
+${j.cnr || ""}
+
+Facts:
+${j.facts || ""}
+
+Issues:
+${j.issues || ""}
+
+Decision:
+${j.decision || ""}
+
+Ratio:
+${j.ratio || j.ratio_decidendi || ""}
+
+Applied Section:
+${j.applied_to_this_section || j.appliedToSection || ""}
+
+Basis:
+${j.basis || ""}
+
+Source:
+${j.url || j.source || ""}
+`)
+        .join("\n");
+
+    return `
+SOURCE ${index + 1}
+
+ACT:
 ${p.actTitle}
 
-Act ID:
+ACT ID:
 ${p.act}
 
-Section:
+SECTION:
 ${p.section}
 
-Heading:
+HEADING:
 ${p.heading}
 
 STATUTORY TEXT:
 ${p.text}
 
 CLASSIFICATION:
-${JSON.stringify(p.classification || [])}
+${JSON.stringify(p.classification)}
 
-STATUTORY CORRESPONDENCE:
-${JSON.stringify(p.correspondsTo || [])}
+STATUTORY MAPPING:
+${JSON.stringify(p.correspondsTo)}
 
 CROSS REFERENCES:
-${JSON.stringify(p.crossReferences || [])}
+${JSON.stringify(p.crossReferences)}
 
-VERIFIED JUDGMENTS:
+DATABASE-RETRIEVED JUDGMENTS:
 ${judgments}
 
-SOURCE URL:
+PROVISION SOURCE:
 ${p.source}
 `;
-    })
-    .join("\n\n--------------------------------\n\n");
+  }).join("\n\n==============================\n\n");
 }
 
-/* ---------------------------------------------------------
-   GEMINI
---------------------------------------------------------- */
+/* ---------------- GEMINI ---------------- */
 
-async function askGemini(query, results) {
-  const material = buildResearchMaterial(results);
-
+async function gemini(query, results) {
   const prompt = `
 You are LawBot AI, a legal research assistant.
 
-USER QUERY:
+USER QUESTION:
 ${query}
 
-VERIFIED LEGAL RESEARCH MATERIAL:
-${material}
+VERIFIED DATABASE MATERIAL:
+${material(results)}
 
-IMPORTANT RULES:
+STRICT CASE-LAW RULES:
 
-1. The verified material above is the source of truth.
-2. Do NOT invent statutory provisions.
-3. Do NOT invent Acts.
-4. Do NOT invent judgments.
-5. Do NOT invent citations, CNR numbers, facts, ratios, decisions or punishments.
-6. If a requested provision was not found, clearly say it was not retrieved.
-7. If multiple provisions are supplied, analyze EACH provision separately.
-8. If the question compares two provisions, directly compare them.
-9. Do not confuse a section number from one Act with the same section number from another Act.
-10. For natural-language legal issues, answer the actual legal issue using the retrieved provision.
-11. Distinguish statutory text from judicial interpretation.
-12. If a statutory mapping is supplied, explain it but do not call similarity-based mapping an official legislative equivalence unless the material explicitly says so.
-13. Do not claim that the connected database contains every judgment in India.
-14. Do not provide legal advice as if you are the user's lawyer.
-15. Keep the answer useful and legally precise.
+1. ONLY discuss judgments appearing under
+   "DATABASE-RETRIEVED JUDGMENTS".
 
-For a comparison, use a table when useful.
+2. NEVER add a case from your own knowledge.
 
-Use this structure where applicable:
+3. NEVER invent a case name.
+
+4. NEVER invent a citation.
+
+5. NEVER invent a court.
+
+6. NEVER invent a date.
+
+7. NEVER invent facts.
+
+8. NEVER invent a ratio.
+
+9. NEVER invent a decision.
+
+10. If no judgment was retrieved, write:
+   "No judgment was retrieved from the connected legal database for this provision/query."
+
+11. Do not convert your background knowledge into a
+    "Verified Judgment".
+
+12. A judgment is "verified" only because it was supplied
+    by the connected database/API.
+
+13. Use the retrieved statutory text as the source of truth
+    for the provision.
+
+14. If multiple Acts or sections are supplied,
+    analyze each separately.
+
+15. Never confuse identical section numbers belonging
+    to different Acts.
+
+16. If this is a comparison, clearly compare the provisions.
+
+17. Do not claim the database contains every Indian judgment.
+
+18. Distinguish:
+    - statutory text
+    - statutory mapping
+    - judicial decision
+    - legal principle
+    - practical significance
+
+19. Do not give invented legal advice.
+
+Use this format when appropriate:
 
 ## Legal Issue
 
@@ -738,32 +534,31 @@ Use this structure where applicable:
 ## Research Limitations
 
 ## Sources
-
-When answering, prioritize the exact retrieved statutory text and verified judgment data.
 `;
 
   const url =
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" +
-    encodeURIComponent(process.env.GEMINI_API_KEY || "");
+    encodeURIComponent(
+      process.env.GEMINI_API_KEY || ""
+    );
 
   const response = await fetch(url, {
     method: "POST",
+
     headers: {
       "Content-Type": "application/json"
     },
+
     body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: prompt
-            }
-          ]
-        }
-      ],
+      contents: [{
+        role: "user",
+        parts: [{
+          text: prompt
+        }]
+      }],
+
       generationConfig: {
-        temperature: 0.1,
+        temperature: 0.05,
         maxOutputTokens: 7000
       }
     })
@@ -780,19 +575,20 @@ When answering, prioritize the exact retrieved statutory text and verified judgm
 
   return (
     data?.candidates?.[0]?.content?.parts
-      ?.map(p => p.text || "")
+      ?.map(x => x.text || "")
       .join("\n") ||
     "No answer generated."
   );
 }
 
-/* ---------------------------------------------------------
-   MAIN HANDLER
---------------------------------------------------------- */
+/* ---------------- MAIN ---------------- */
 
 export default async function handler(req, res) {
   try {
-    if (req.method !== "GET" && req.method !== "POST") {
+    if (
+      req.method !== "GET" &&
+      req.method !== "POST"
+    ) {
       return res.status(405).json({
         error: "Method not allowed"
       });
@@ -804,7 +600,6 @@ export default async function handler(req, res) {
       query =
         req.body?.query ||
         req.body?.q ||
-        req.body?.search ||
         "";
     } else {
       query =
@@ -821,163 +616,82 @@ export default async function handler(req, res) {
       });
     }
 
-    /* ---------------------------------------------
-       STEP 1 — Detect exact Act/Section pairs
-    --------------------------------------------- */
+    /* Detect exact pairs first */
+    let pairs = detectPairs(query);
 
-    let pairs = detectExplicitPairs(query);
-
-    /* ---------------------------------------------
-       STEP 2 — Natural language fallback
-    --------------------------------------------- */
-
+    /* Natural-language fallback */
     if (!pairs.length) {
-      pairs = await resolveNaturalLanguagePair(query);
+      pairs = await naturalPair(query);
     }
 
-    /* ---------------------------------------------
-       STEP 3 — Retrieve exact provisions
-    --------------------------------------------- */
-
-    let results = [];
+    /* Retrieve */
+    const results = [];
 
     for (const pair of pairs.slice(0, 8)) {
-      const result = await retrievePair(
-        pair,
-        query
+      results.push(
+        await retrieve(pair, query)
       );
-
-      results.push(result);
     }
 
-    /* ---------------------------------------------
-       STEP 4 — If no exact pair found,
-       perform broader research through sections API
-    --------------------------------------------- */
-
-    if (!results.length) {
-      try {
-        const fallbackUrl =
-          "/api/sections?q=" +
-          encodeURIComponent(query) +
-          "&query=" +
-          encodeURIComponent(query);
-
-        const r = await fetch(fallbackUrl);
-
-        if (r.ok) {
-          const data = await r.json();
-
-          const provisions =
-            data.provisions ||
-            data.sections ||
-            data.results ||
-            [];
-
-          for (const item of provisions.slice(0, 5)) {
-            if (
-              item.act &&
-              item.section
-            ) {
-              const result =
-                await retrievePair(
-                  {
-                    act: item.act,
-                    section: item.section
-                  },
-                  query
-                );
-
-              results.push(result);
-            }
-          }
-        }
-      } catch {}
-    }
-
-    /* ---------------------------------------------
-       STEP 5 — Remove duplicates
-    --------------------------------------------- */
-
+    /* Deduplicate */
     const seen = new Set();
 
-    results = results.filter(result => {
-      const key =
-        result.requestedAct +
-        ":" +
-        result.requestedSection;
+    const uniqueResults =
+      results.filter(r => {
+        const key =
+          r.act + ":" + r.section;
 
-      if (seen.has(key)) return false;
+        if (seen.has(key)) {
+          return false;
+        }
 
-      seen.add(key);
-      return true;
-    });
+        seen.add(key);
+        return true;
+      });
 
-    /* ---------------------------------------------
-       STEP 6 — Gemini
-    --------------------------------------------- */
-
+    /* Gemini */
     let answer;
 
     if (process.env.GEMINI_API_KEY) {
-      answer = await askGemini(
-        query,
-        results
-      );
+      answer =
+        await gemini(
+          query,
+          uniqueResults
+        );
     } else {
       answer =
         "Gemini API key is not configured.";
     }
 
-    /* ---------------------------------------------
-       STEP 7 — Build frontend-friendly output
-    --------------------------------------------- */
+    /* Frontend data */
+    const provisions =
+      uniqueResults
+        .filter(r => r.found)
+        .map(r => r.provision);
 
-    const verifiedProvisions = results
-      .filter(r => r.found && r.provision)
-      .map(r => ({
-        act: r.provision.act,
-        actTitle: r.provision.actTitle,
-        section: r.provision.section,
-        heading: r.provision.heading,
-        text: r.provision.text,
-        classification:
-          r.provision.classification,
-        correspondsTo:
-          r.provision.correspondsTo,
-        crossReferences:
-          r.provision.crossReferences,
-        source:
-          r.provision.source
-      }));
+    const judgments = [];
 
-    const verifiedJudgments = [];
-
-    for (const result of results) {
-      for (const j of result.judgments || []) {
-        verifiedJudgments.push({
+    for (const r of uniqueResults) {
+      for (const j of r.judgments || []) {
+        judgments.push({
           ...j,
-          verifiedAct:
-            result.provision?.act ||
-            result.requestedAct,
-          verifiedSection:
-            result.provision?.section ||
-            result.requestedSection
+          verifiedAct: r.act,
+          verifiedSection: r.section
         });
       }
     }
 
     const mappings = [];
 
-    for (const provision of verifiedProvisions) {
-      if (Array.isArray(provision.correspondsTo)) {
-        mappings.push(
-          ...provision.correspondsTo.map(m => ({
-            fromAct: provision.act,
-            fromSection: provision.section,
+    for (const p of provisions) {
+      if (Array.isArray(p.correspondsTo)) {
+        for (const m of p.correspondsTo) {
+          mappings.push({
+            fromAct: p.act,
+            fromSection: p.section,
             ...m
-          }))
-        );
+          });
+        }
       }
     }
 
@@ -985,45 +699,43 @@ export default async function handler(req, res) {
       answer,
 
       verified:
-        verifiedProvisions.length > 0,
+        provisions.length > 0,
 
       query,
 
-      provisions:
-        verifiedProvisions,
+      provisions,
 
-      sections:
-        verifiedProvisions,
+      sections: provisions,
 
-      verifiedProvisions,
+      verifiedProvisions: provisions,
 
-      judgments:
-        verifiedJudgments,
+      judgments,
 
-      verifiedJudgments,
+      verifiedJudgments: judgments,
 
       mappings,
 
-      correspondingProvisions:
-        mappings,
+      correspondingProvisions: mappings,
 
       sources:
-        verifiedProvisions.map(
-          p => ({
-            act: p.actTitle,
-            section: p.section,
-            heading: p.heading,
-            source: p.source
-          })
-        ),
+        provisions.map(p => ({
+          act: p.actTitle,
+          section: p.section,
+          heading: p.heading,
+          source: p.source
+        })),
 
       research: {
         exactPairsDetected: pairs,
-        retrievedPairs: results.map(r => ({
-          act: r.requestedAct,
-          section: r.requestedSection,
-          found: r.found
-        }))
+
+        retrievedPairs:
+          uniqueResults.map(r => ({
+            act: r.act,
+            section: r.section,
+            found: r.found,
+            judgmentCount:
+              (r.judgments || []).length
+          }))
       }
     });
 
