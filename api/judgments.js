@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST" && req.method !== "GET") {
+  if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
@@ -8,6 +8,9 @@ export default async function handler(req, res) {
     let act = "";
     let section = "";
     let court = "";
+    let source = "";
+    let id = "";
+    let caseName = "";
 
     if (req.method === "POST") {
       const body = req.body || {};
@@ -15,67 +18,197 @@ export default async function handler(req, res) {
       act = body.act || "";
       section = body.section || "";
       court = body.court || "";
+      source = body.source || "";
+      id = body.id || body.cnr || "";
+      caseName = body.caseName || "";
     } else {
       query = req.query?.query || "";
       act = req.query?.act || "";
       section = req.query?.section || "";
       court = req.query?.court || "";
+      source = req.query?.source || "";
+      id = req.query?.id || req.query?.cnr || "";
+      caseName = req.query?.caseName || "";
     }
 
     const userQuery = String(query).trim();
     const q = userQuery.toLowerCase();
 
-    /* ---------------------------------------------
-       AUTOMATIC ACT DETECTION
-    --------------------------------------------- */
+    const API_BASE =
+      "https://indiacode.ecourtsindia.com/api/v1";
 
-    const actMap = [
-      ["it-act", [
-        "information technology act",
-        "it act",
-        "information technology act 2000"
-      ]],
-      ["ipc", ["indian penal code", "ipc"]],
-      ["bns", ["bharatiya nyaya sanhita", "bns"]],
-      ["crpc", ["code of criminal procedure", "crpc"]],
-      ["bnss", ["bharatiya nagarik suraksha sanhita", "bnss"]],
-      ["bsa", ["bharatiya sakshya adhiniyam", "bsa"]],
-      ["evidence-act", ["indian evidence act", "evidence act"]],
-      ["cpc", ["code of civil procedure", "cpc"]],
-      ["ni-act", [
-        "negotiable instruments act",
-        "ni act",
-        "cheque bounce",
-        "cheque dishonour",
-        "cheque dishonor"
-      ]],
-      ["pocso", ["pocso", "protection of children from sexual offences act"]],
-      ["ndps-act", [
-        "ndps",
-        "narcotic drugs and psychotropic substances act"
-      ]]
-    ];
+    /* =====================================================
+       JUDGMENT READER
+       ===================================================== */
 
-    if (!act) {
-      for (const [id, names] of actMap) {
-        if (names.some(name => q.includes(name))) {
-          act = id;
-          break;
+    if (source || id || caseName) {
+
+      /* Direct source */
+      if (source) {
+        try {
+          const r = await fetch(source);
+
+          if (r.ok) {
+            const data = await r.json();
+
+            return res.status(200).json({
+              verified: true,
+              mode: "reader",
+              judgment: normalizeJudgment(
+                data.judgment || data.result || data
+              )
+            });
+          }
+        } catch {}
+      }
+
+      /* Judgment ID / CNR */
+      if (id) {
+        const urls = [
+          `${API_BASE}/judgments/${encodeURIComponent(id)}`,
+          `${API_BASE}/judgment/${encodeURIComponent(id)}`
+        ];
+
+        for (const url of urls) {
+          try {
+            const r = await fetch(url);
+
+            if (r.ok) {
+              const data = await r.json();
+
+              return res.status(200).json({
+                verified: true,
+                mode: "reader",
+                judgment: normalizeJudgment(
+                  data.judgment || data.result || data
+                )
+              });
+            }
+          } catch {}
         }
       }
+
+      /* Case name */
+      if (caseName) {
+        try {
+          const searchUrl =
+            `${API_BASE}/search?` +
+            new URLSearchParams({
+              q: caseName,
+              kind: "judgment",
+              limit: "20"
+            }).toString();
+
+          const r = await fetch(searchUrl);
+
+          if (r.ok) {
+            const data = await r.json();
+
+            const results =
+              data.results ||
+              data.judgments ||
+              [];
+
+            if (results.length) {
+              return res.status(200).json({
+                verified: true,
+                mode: "reader",
+                judgment:
+                  normalizeJudgment(results[0]),
+                results:
+                  results.map(normalizeJudgment)
+              });
+            }
+          }
+        } catch {}
+      }
+
+      return res.status(404).json({
+        verified: false,
+        mode: "reader",
+        error:
+          "Judgment not found in the connected legal database"
+      });
     }
 
-    /* ---------------------------------------------
-       CHEQUE BOUNCE
-    --------------------------------------------- */
+    /* =====================================================
+       SEARCH MODE
+       ===================================================== */
 
+    /* Automatic IT Act */
+    if (!act && q.includes("information technology act")) {
+      act = "it-act";
+    }
+
+    if (!act && q.includes("it act")) {
+      act = "it-act";
+    }
+
+    /* IPC */
+    if (!act && q.includes("indian penal code")) {
+      act = "ipc";
+    }
+
+    if (!act && /\bipc\b/i.test(q)) {
+      act = "ipc";
+    }
+
+    /* BNS */
+    if (!act && q.includes("bharatiya nyaya sanhita")) {
+      act = "bns";
+    }
+
+    if (!act && /\bbns\b/i.test(q)) {
+      act = "bns";
+    }
+
+    /* CrPC */
+    if (!act && q.includes("code of criminal procedure")) {
+      act = "crpc";
+    }
+
+    if (!act && /\bcrpc\b/i.test(q)) {
+      act = "crpc";
+    }
+
+    /* BNSS */
+    if (!act && q.includes("bharatiya nagarik suraksha sanhita")) {
+      act = "bnss";
+    }
+
+    if (!act && /\bbnss\b/i.test(q)) {
+      act = "bnss";
+    }
+
+    /* BSA */
+    if (!act && q.includes("bharatiya sakshya adhiniyam")) {
+      act = "bsa";
+    }
+
+    if (!act && /\bbsa\b/i.test(q)) {
+      act = "bsa";
+    }
+
+    /* Evidence Act */
+    if (!act && q.includes("evidence act")) {
+      act = "evidence-act";
+    }
+
+    /* CPC */
+    if (!act && q.includes("code of civil procedure")) {
+      act = "cpc";
+    }
+
+    if (!act && /\bcpc\b/i.test(q)) {
+      act = "cpc";
+    }
+
+    /* NI Act */
     if (
       !act &&
       (
+        q.includes("negotiable instruments act") ||
         q.includes("cheque bounce") ||
-        q.includes("check bounce") ||
-        q.includes("dishonoured cheque") ||
-        q.includes("dishonored cheque") ||
         q.includes("cheque dishonour") ||
         q.includes("cheque dishonor")
       )
@@ -95,28 +228,50 @@ export default async function handler(req, res) {
       section = "138";
     }
 
-    /* ---------------------------------------------
-       SECTION DETECTION
-    --------------------------------------------- */
-
-    if (!section) {
-      const matches = [
-        ...q.matchAll(
-          /\b(?:section|sec\.?)\s*([0-9]+[a-z]?(?:\([a-z0-9]+\))?)\b/gi
-        ),
-        ...q.matchAll(
-          /\b(?:ipc|bns|crpc|bnss|bsa|cpc)\s*[-:]?\s*([0-9]+[a-z]?)\b/gi
-        )
-      ];
-
-      if (matches.length) {
-        section = matches[0][1];
-      }
+    /* POCSO */
+    if (
+      !act &&
+      (
+        q.includes("pocso") ||
+        q.includes("protection of children from sexual offences")
+      )
+    ) {
+      act = "pocso";
     }
 
-    /* ---------------------------------------------
-       COURT DETECTION
-    --------------------------------------------- */
+    /* NDPS */
+    if (
+      !act &&
+      (
+        q.includes("ndps") ||
+        q.includes("narcotic drugs and psychotropic substances")
+      )
+    ) {
+      act = "ndps-act";
+    }
+
+    /* =====================================================
+       SECTION DETECTION
+       ===================================================== */
+
+    if (!section) {
+      const m =
+        q.match(
+          /\b(?:section|sec\.?)\s*([0-9]+[a-z]?(?:\([a-z0-9]+\))?)\b/i
+        ) ||
+        q.match(
+          /\b(?:ipc|bns|crpc|bnss|bsa|cpc)\s*[-:]?\s*([0-9]+[a-z]?)\b/i
+        ) ||
+        q.match(
+          /\bit\s+act\s+(?:section\s*)?([0-9]+[a-z]?)\b/i
+        );
+
+      if (m) section = m[1];
+    }
+
+    /* =====================================================
+       COURT
+       ===================================================== */
 
     if (!court) {
       if (q.includes("supreme court")) {
@@ -126,27 +281,23 @@ export default async function handler(req, res) {
       }
     }
 
-    /* ---------------------------------------------
-       SEARCH PARAMETERS
-    --------------------------------------------- */
+    /* =====================================================
+       DATABASE SEARCH
+       ===================================================== */
 
-    const baseParams = new URLSearchParams();
+    const params = new URLSearchParams();
 
-    if (act) baseParams.set("act", act);
-    if (section) baseParams.set("section", section);
-    if (court) baseParams.set("court", court);
+    if (act) params.set("act", act);
+    if (section) params.set("section", section);
+    if (court) params.set("court", court);
 
-    baseParams.set("limit", "100");
+    params.set("limit", "100");
 
     let url =
-      `https://indiacode.ecourtsindia.com/api/v1/judgments?${baseParams}`;
+      `${API_BASE}/judgments?${params.toString()}`;
 
-    const all = [];
+    const allJudgments = [];
     let total = 0;
-
-    /* ---------------------------------------------
-       RETRIEVE JUDGMENTS
-    --------------------------------------------- */
 
     while (url) {
       const response = await fetch(url);
@@ -154,24 +305,28 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         return res.status(response.status).json({
-          error: data.error || "Judgment search failed"
+          error:
+            data.error ||
+            "Judgment search failed"
         });
       }
 
       total = data.total || total;
 
       if (Array.isArray(data.judgments)) {
-        all.push(...data.judgments);
+        allJudgments.push(
+          ...data.judgments
+        );
       }
 
       url = data.next || null;
 
-      if (all.length >= 500) break;
+      if (allJudgments.length >= 500) break;
     }
 
-    /* ---------------------------------------------
-       NORMALIZE
-    --------------------------------------------- */
+    /* =====================================================
+       SEARCH SCORING
+       ===================================================== */
 
     function normalize(value) {
       return String(value || "")
@@ -182,287 +337,177 @@ export default async function handler(req, res) {
     }
 
     const stopWords = new Set([
-      "the", "and", "for", "where", "with", "from",
-      "that", "this", "case", "cases", "judgment",
-      "judgments", "judgement", "judgements",
-      "supreme", "court", "high", "section",
-      "sections", "act", "under", "about",
-      "what", "which", "how", "does", "can",
-      "tell", "explain", "meaning", "law",
-      "legal", "provision", "india", "indian",
-      "of", "to", "in", "on", "is", "are",
-      "was", "were", "a", "an", "whether",
-      "person", "persons"
+      "the","and","for","where","with","from",
+      "that","this","case","cases","judgment",
+      "judgments","judgement","judgements",
+      "supreme","court","high","section",
+      "sections","act","under","about","what",
+      "which","how","does","can","tell","explain",
+      "meaning","law","legal","provision","india",
+      "indian","of","to","in","on","is","are",
+      "was","were","a","an","whether","find"
     ]);
 
-    const words = normalize(userQuery)
-      .split(/\s+/)
-      .filter(w =>
-        w.length >= 3 &&
-        !stopWords.has(w)
-      );
-
-    /* ---------------------------------------------
-       FIELD EXTRACTION
-    --------------------------------------------- */
-
-    function fields(j) {
-      return {
-        title: normalize(
-          j.title ||
-          j.case_name ||
-          j.caseName
-        ),
-
-        court: normalize(
-          j.court_name ||
-          j.court
-        ),
-
-        facts: normalize(
-          j.facts ||
-          j.case_facts
-        ),
-
-        issues: normalize(
-          j.issues ||
-          j.legal_issues
-        ),
-
-        ratio: normalize(
-          j.ratio_decidendi ||
-          j.ratio
-        ),
-
-        decision: normalize(
-          j.decision ||
-          j.holding
-        ),
-
-        applied: normalize(
-          j.applied_to_this_section
-        ),
-
-        basis: normalize(
-          j.basis
-        ),
-
-        decidedUnder: normalize(
-          j.decided_under
-        )
-      };
-    }
-
-    /* ---------------------------------------------
-       ISSUE PHRASES
-    --------------------------------------------- */
-
-    const issuePhrases = [];
-
-    const phrases = [
-      "unauthorized access",
-      "unauthorised access",
-      "computer related offence",
-      "computer related offences",
-      "civil dispute",
-      "commercial dispute",
-      "corporate dispute",
-      "criminal proceedings",
-      "quashing of fir",
-      "quashing fir",
-      "fir quashed",
-      "bail",
-      "anticipatory bail",
-      "regular bail",
-      "dishonest intention",
-      "fraudulent intention",
-      "mens rea",
-      "electronic evidence",
-      "digital evidence",
-      "cheque bounce",
-      "dishonour of cheque",
-      "dishonor of cheque",
-      "service of notice",
-      "statutory notice"
-    ];
-
-    for (const phrase of phrases) {
-      if (q.includes(phrase)) {
-        issuePhrases.push(phrase);
-      }
-    }
-
-    /* ---------------------------------------------
-       SCORE
-    --------------------------------------------- */
+    const words =
+      normalize(userQuery)
+        .split(/\s+/)
+        .filter(
+          w =>
+            w.length >= 3 &&
+            !stopWords.has(w)
+        );
 
     function score(j) {
-      const f = fields(j);
+      const title = normalize(
+        j.title || j.case_name
+      );
 
-      let s = 0;
+      const facts = normalize(
+        j.facts || j.case_facts
+      );
 
-      const combined = [
-        f.title,
-        f.facts,
-        f.issues,
-        f.ratio,
-        f.decision,
-        f.applied,
-        f.basis,
-        f.decidedUnder
+      const issues = normalize(
+        j.issues || j.legal_issues
+      );
+
+      const ratio = normalize(
+        j.ratio_decidendi || j.ratio
+      );
+
+      const decision = normalize(
+        j.decision || j.holding
+      );
+
+      const applied = normalize(
+        j.applied_to_this_section
+      );
+
+      const basis = normalize(
+        j.basis
+      );
+
+      const decided = normalize(
+        j.decided_under
+      );
+
+      const text = [
+        title,
+        facts,
+        issues,
+        ratio,
+        decision,
+        applied,
+        basis,
+        decided
       ].join(" ");
 
-      /* Exact section */
+      let score = 0;
+
       if (section) {
         const sec = normalize(section);
 
-        if (f.applied.includes(sec)) s += 100;
-        if (f.decidedUnder.includes(sec)) s += 80;
-        if (f.basis.includes(sec)) s += 60;
-
-        if (
-          combined.includes(`section ${sec}`)
-        ) {
-          s += 40;
-        }
+        if (applied.includes(sec)) score += 100;
+        if (decided.includes(sec)) score += 80;
+        if (basis.includes(sec)) score += 60;
+        if (text.includes(`section ${sec}`)) score += 40;
       }
 
-      /* Query words */
       for (const word of words) {
-        if (f.title.includes(word)) s += 18;
-        if (f.issues.includes(word)) s += 15;
-        if (f.ratio.includes(word)) s += 14;
-        if (f.applied.includes(word)) s += 16;
-        if (f.basis.includes(word)) s += 10;
-        if (f.decision.includes(word)) s += 9;
-        if (f.facts.includes(word)) s += 5;
+        if (title.includes(word)) score += 18;
+        if (issues.includes(word)) score += 15;
+        if (ratio.includes(word)) score += 14;
+        if (applied.includes(word)) score += 16;
+        if (basis.includes(word)) score += 10;
+        if (decision.includes(word)) score += 9;
+        if (facts.includes(word)) score += 5;
       }
 
-      /* Exact issue phrases */
-      for (const phrase of issuePhrases) {
-        if (combined.includes(phrase)) {
-          s += 30;
-        }
+      const phrases = [
+        "unauthorized access",
+        "unauthorised access",
+        "civil dispute",
+        "commercial dispute",
+        "corporate dispute",
+        "quashing",
+        "quashed",
+        "bail",
+        "anticipatory bail",
+        "mens rea",
+        "dishonest intention",
+        "fraudulent intention",
+        "cheque bounce",
+        "dishonour of cheque",
+        "dishonor of cheque",
+        "service of notice"
+      ];
 
-        if (f.issues.includes(phrase)) {
-          s += 25;
-        }
-
-        if (f.ratio.includes(phrase)) {
-          s += 25;
-        }
-      }
-
-      /* IT Act specific */
-      if (
-        act === "it-act" &&
-        (
-          q.includes("unauthorized access") ||
-          q.includes("unauthorised access")
-        )
-      ) {
-        if (
-          combined.includes("unauthorized access") ||
-          combined.includes("unauthorised access") ||
-          combined.includes("computer related")
-        ) {
-          s += 50;
+      for (const phrase of phrases) {
+        if (q.includes(phrase)) {
+          if (text.includes(phrase)) score += 30;
+          if (issues.includes(phrase)) score += 25;
+          if (ratio.includes(phrase)) score += 25;
         }
       }
 
-      /* Civil/commercial dispute */
-      if (
-        q.includes("civil dispute") ||
-        q.includes("commercial dispute") ||
-        q.includes("corporate dispute")
-      ) {
-        if (
-          combined.includes("civil") ||
-          combined.includes("commercial") ||
-          combined.includes("corporate")
-        ) {
-          s += 30;
-        }
-      }
-
-      /* Quashing */
-      if (
-        q.includes("quash") ||
-        q.includes("quashing")
-      ) {
-        if (
-          combined.includes("quash") ||
-          combined.includes("quashing")
-        ) {
-          s += 35;
-        }
-      }
-
-      /* Bail */
-      if (q.includes("bail")) {
-        if (combined.includes("bail")) {
-          s += 35;
-        }
-      }
-
-      /* Court */
       if (
         court === "SC" &&
-        f.court.includes("supreme")
+        normalize(j.court_name || j.court)
+          .includes("supreme")
       ) {
-        s += 30;
+        score += 30;
       }
 
       if (
         court === "HC" &&
-        f.court.includes("high")
+        normalize(j.court_name || j.court)
+          .includes("high")
       ) {
-        s += 20;
+        score += 20;
       }
 
-      /* Quality */
-      if (f.ratio) s += 8;
-      if (f.issues) s += 6;
-      if (f.decision) s += 6;
-      if (f.applied) s += 12;
+      if (ratio) score += 8;
+      if (issues) score += 6;
+      if (decision) score += 6;
+      if (applied) score += 12;
 
-      return s;
+      return score;
     }
 
-    /* ---------------------------------------------
-       DEDUPLICATE
-    --------------------------------------------- */
+    /* =====================================================
+       DEDUPLICATION
+       ===================================================== */
 
     const seen = new Set();
 
-    const unique = all.filter(j => {
-      const key = normalize(
-        j.title ||
-        j.case_name ||
-        j.url ||
-        JSON.stringify(j)
-      );
+    const unique =
+      allJudgments.filter(j => {
+        const key = normalize(
+          j.title ||
+          j.case_name ||
+          j.cnr ||
+          j.url
+        );
 
-      if (!key || seen.has(key)) return false;
+        if (!key || seen.has(key)) return false;
 
-      seen.add(key);
-      return true;
-    });
+        seen.add(key);
+        return true;
+      });
 
-    /* ---------------------------------------------
+    /* =====================================================
        RANK
-    --------------------------------------------- */
+       ===================================================== */
 
-    const ranked = unique
-      .map(j => ({
-        judgment: j,
-        score: score(j)
-      }))
-      .sort((a, b) => b.score - a.score);
-
-    /* ---------------------------------------------
-       RELEVANCE LABEL
-    --------------------------------------------- */
+    const ranked =
+      unique
+        .map(j => ({
+          judgment: j,
+          score: score(j)
+        }))
+        .sort(
+          (a, b) =>
+            b.score - a.score
+        );
 
     function relevance(score) {
       if (score >= 100) return "Direct";
@@ -470,137 +515,272 @@ export default async function handler(req, res) {
       return "Low";
     }
 
-    /* ---------------------------------------------
-       OUTPUT
-    --------------------------------------------- */
+    /* =====================================================
+       FINAL RESULTS
+       ===================================================== */
 
-    const judgments = ranked
-      .slice(0, 20)
-      .map(item => {
-        const j = item.judgment;
+    const judgments =
+      ranked
+        .slice(0, 20)
+        .map(item => {
+          const j = item.judgment;
 
-        const decision =
-          j.decision &&
-          !/\.(pdf|doc|docx)$/i.test(
-            String(j.decision).trim()
-          )
-            ? j.decision
-            : (
-              j.holding &&
-              !/\.(pdf|doc|docx)$/i.test(
-                String(j.holding).trim()
-              )
-                ? j.holding
-                : null
-            );
+          return {
+            verified: true,
 
-        return {
-          verified: true,
+            relevanceScore:
+              item.score,
 
-          relevanceScore: item.score,
+            relevance:
+              relevance(item.score),
 
-          relevance:
-            relevance(item.score),
+            caseName:
+              j.title ||
+              j.case_name ||
+              null,
 
-          caseName:
-            j.title ||
-            j.case_name ||
-            null,
+            court:
+              j.court_name ||
+              j.court ||
+              null,
 
-          court:
-            j.court_name ||
-            j.court ||
-            null,
+            courtLevel:
+              j.court_level ||
+              null,
 
-          courtLevel:
-            j.court_level ||
-            null,
+            date:
+              j.date ||
+              j.decision_date ||
+              null,
 
-          date:
-            j.date ||
-            j.decision_date ||
-            null,
+            citation:
+              j.citation ||
+              null,
 
-          citation:
-            j.citation ||
-            null,
+            cnr:
+              j.cnr ||
+              null,
 
-          cnr:
-            j.cnr ||
-            null,
+            facts:
+              j.facts ||
+              j.case_facts ||
+              null,
 
-          facts:
-            j.facts ||
-            j.case_facts ||
-            null,
+            issues:
+              j.issues ||
+              j.legal_issues ||
+              null,
 
-          issues:
-            j.issues ||
-            j.legal_issues ||
-            null,
+            decision:
+              cleanDecision(
+                j.decision ||
+                j.holding
+              ),
 
-          decision,
+            ratio:
+              j.ratio_decidendi ||
+              j.ratio ||
+              null,
 
-          ratio:
-            j.ratio_decidendi ||
-            j.ratio ||
-            null,
+            appliedToSection:
+              j.applied_to_this_section ||
+              null,
 
-          appliedToSection:
-            j.applied_to_this_section ||
-            null,
+            basis:
+              j.basis ||
+              null,
 
-          basis:
-            j.basis ||
-            null,
+            precedentialValue:
+              j.precedential_value ||
+              null,
 
-          precedentialValue:
-            j.precedential_value ||
-            null,
+            courtMarking:
+              j.court_marking ||
+              null,
 
-          courtMarking:
-            j.court_marking ||
-            null,
+            decidedUnder:
+              j.decided_under ||
+              null,
 
-          decidedUnder:
-            j.decided_under ||
-            null,
-
-          source:
-            j.url ||
-            j.source ||
-            null
-        };
-      });
+            source:
+              j.url ||
+              j.source ||
+              null
+          };
+        });
 
     return res.status(200).json({
       verified: true,
+      mode: "search",
 
-      query: userQuery || null,
+      query:
+        userQuery || null,
 
-      act: act || null,
+      act:
+        act || null,
 
-      section: section || null,
+      section:
+        section || null,
 
-      court: court || null,
+      court:
+        court || null,
 
       total,
 
-      count: judgments.length,
+      count:
+        judgments.length,
 
       judgments
     });
 
   } catch (error) {
     console.error(
-      "LawBot judgment search error:",
+      "LawBot judgment error:",
       error
     );
 
     return res.status(500).json({
+      verified: false,
       error:
         error.message ||
-        "Server error while searching judgments"
+        "Judgment operation failed"
     });
   }
+}
+
+
+/* =========================================================
+   JUDGMENT READER NORMALIZER
+   ========================================================= */
+
+function normalizeJudgment(j) {
+  return {
+    verified: true,
+
+    caseName:
+      j.title ||
+      j.case_name ||
+      j.caseName ||
+      null,
+
+    court:
+      j.court_name ||
+      j.court ||
+      null,
+
+    courtLevel:
+      j.court_level ||
+      null,
+
+    date:
+      j.date ||
+      j.decision_date ||
+      null,
+
+    citation:
+      j.citation ||
+      null,
+
+    cnr:
+      j.cnr ||
+      null,
+
+    judge:
+      j.judge ||
+      j.judges ||
+      j.coram ||
+      null,
+
+    petitioner:
+      j.petitioner ||
+      j.appellant ||
+      null,
+
+    respondent:
+      j.respondent ||
+      j.respondents ||
+      null,
+
+    facts:
+      j.facts ||
+      j.case_facts ||
+      null,
+
+    issues:
+      j.issues ||
+      j.legal_issues ||
+      null,
+
+    arguments:
+      j.arguments ||
+      j.submissions ||
+      null,
+
+    findings:
+      j.findings ||
+      null,
+
+    decision:
+      cleanDecision(
+        j.decision ||
+        j.holding
+      ),
+
+    ratio:
+      j.ratio_decidendi ||
+      j.ratio ||
+      null,
+
+    relevantSections:
+      j.applied_to_this_section ||
+      j.relevant_sections ||
+      j.sections ||
+      null,
+
+    basis:
+      j.basis ||
+      null,
+
+    precedentialValue:
+      j.precedential_value ||
+      null,
+
+    courtMarking:
+      j.court_marking ||
+      null,
+
+    decidedUnder:
+      j.decided_under ||
+      null,
+
+    source:
+      j.url ||
+      j.source ||
+      null,
+
+    document:
+      j.document ||
+      j.pdf ||
+      j.document_url ||
+      null
+  };
+}
+
+
+/* =========================================================
+   CLEAN PDF/DOC FILE NAMES
+   ========================================================= */
+
+function cleanDecision(value) {
+  if (!value) return null;
+
+  const text = String(value).trim();
+
+  if (
+    /\.(pdf|doc|docx)$/i.test(text)
+  ) {
+    return null;
+  }
+
+  return text;
 }
