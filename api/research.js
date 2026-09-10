@@ -1,919 +1,1042 @@
-export default async function handler(req, res) {
 
+// api/research.js
+
+const API_BASE = "https://indiacode.ecourtsindia.com/api/v1";
+
+function clean(value) {
+  return String(value || "").trim();
+}
+
+function lower(value) {
+  return clean(value).toLowerCase();
+}
+
+async function getJson(url) {
   try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
 
-    // ==================================================
-    // GET USER QUERY
-    // ==================================================
+/* ---------------------------------------------------------
+   KNOWN ACTS
+--------------------------------------------------------- */
 
-    const body = req.body || {};
+const ACTS = [
+  {
+    id: "ipc",
+    names: [
+      "ipc",
+      "indian penal code",
+      "penal code",
+      "indian penal code 1860"
+    ]
+  },
+  {
+    id: "bns",
+    names: [
+      "bns",
+      "bharatiya nyaya sanhita",
+      "bharatiya nyaya sanhita 2023"
+    ]
+  },
+  {
+    id: "crpc",
+    names: [
+      "crpc",
+      "code of criminal procedure",
+      "criminal procedure code"
+    ]
+  },
+  {
+    id: "bnss",
+    names: [
+      "bnss",
+      "bharatiya nagarik suraksha sanhita",
+      "bharatiya nagarik suraksha sanhita 2023"
+    ]
+  },
+  {
+    id: "evidence-act",
+    names: [
+      "evidence act",
+      "indian evidence act",
+      "indian evidence act 1872"
+    ]
+  },
+  {
+    id: "bsa",
+    names: [
+      "bsa",
+      "bharatiya sakshya adhiniyam",
+      "bharatiya sakshya adhiniyam 2023"
+    ]
+  },
+  {
+    id: "cpc",
+    names: [
+      "cpc",
+      "code of civil procedure",
+      "civil procedure code"
+    ]
+  },
+  {
+    id: "ni-act",
+    names: [
+      "ni act",
+      "negotiable instruments act",
+      "negotiable instruments act 1881",
+      "cheque bounce",
+      "cheque dishonour"
+    ]
+  },
+  {
+    id: "it-act",
+    names: [
+      "it act",
+      "information technology act",
+      "information technology act 2000",
+      "information technology act, 2000",
+      "information technology law"
+    ]
+  },
+  {
+    id: "pocso",
+    names: [
+      "pocso",
+      "pocso act",
+      "protection of children from sexual offences act"
+    ]
+  },
+  {
+    id: "ndps-act",
+    names: [
+      "ndps",
+      "ndps act",
+      "narcotic drugs and psychotropic substances act"
+    ]
+  }
+];
 
-    const query = String(
-      body.query ||
-      body.q ||
-      req.query?.query ||
-      req.query?.q ||
-      ""
-    ).trim();
+/* ---------------------------------------------------------
+   DETECT ACTS
+--------------------------------------------------------- */
 
+function detectKnownActs(query) {
+  const q = lower(query);
+  const found = [];
 
-    if (!query) {
+  for (const act of ACTS) {
+    let best = "";
 
-      return res.status(400).json({
-        error: "Please enter a legal research query."
+    for (const name of act.names) {
+      if (q.includes(name) && name.length > best.length) {
+        best = name;
+      }
+    }
+
+    if (best) {
+      found.push({
+        id: act.id,
+        matched: best
       });
-
     }
+  }
 
+  return found;
+}
 
-    const API_BASE =
-      `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
+/* ---------------------------------------------------------
+   DETECT SECTION REFERENCES
+   Supports:
+   Section 302 IPC
+   IPC Section 302
+   IPC 302
+   Section 66 Information Technology Act
+   Information Technology Act Section 66
+--------------------------------------------------------- */
 
+function extractSectionNumbers(query) {
+  const q = clean(query);
 
-    const q =
-      query.toLowerCase();
+  const patterns = [
+    /\bsection\s+([0-9]+[A-Za-z-]*)\b/gi,
+    /\bsec\.?\s+([0-9]+[A-Za-z-]*)\b/gi
+  ];
 
+  const results = [];
 
-    let act = "";
-    let section = "";
+  for (const regex of patterns) {
+    let m;
 
-
-    // ==================================================
-    // KNOWN ACT DETECTION
-    // ==================================================
-
-    if (
-      /\bBNS\b|bharatiya nyaya sanhita/i.test(query)
-    ) {
-
-      act = "bns";
-
-    }
-
-    else if (
-      /\bBNSS\b|bharatiya nagarik suraksha sanhita/i.test(query)
-    ) {
-
-      act = "bnss";
-
-    }
-
-    else if (
-      /\bBSA\b|bharatiya sakshya adhiniyam|evidence act/i.test(query)
-    ) {
-
-      act = "bsa";
-
-    }
-
-    else if (
-      /\bIPC\b|indian penal code/i.test(query)
-    ) {
-
-      act = "ipc";
-
-    }
-
-    else if (
-      /\bCrPC\b|code of criminal procedure/i.test(query)
-    ) {
-
-      act = "crpc";
-
-    }
-
-    else if (
-      /\bCPC\b|code of civil procedure/i.test(query)
-    ) {
-
-      act = "cpc";
-
-    }
-
-    else if (
-      /\bNI\s*Act\b|negotiable instruments act|cheque bounce|check bounce/i.test(query)
-    ) {
-
-      act = "ni-act";
-
-    }
-
-
-    // ==================================================
-    // SECTION DETECTION
-    // ==================================================
-
-    const sectionMatch =
-
-      query.match(
-        /\b(?:section|sec\.?)\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
-      )
-
-      ||
-
-      query.match(
-        /\b(?:BNS|BNSS|BSA|IPC|CrPC|CPC)\s*[-:]?\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
-      )
-
-      ||
-
-      query.match(
-        /\b(?:NI\s*ACT|N\.I\.\s*ACT)\s*[-:]?\s*([0-9]+(?:[a-z]|-[a-z0-9]+)?)\b/i
-      );
-
-
-    if (sectionMatch) {
-
-      section =
-        sectionMatch[1];
-
-    }
-
-
-    // ==================================================
-    // RETRIEVE VERIFIED PROVISIONS
-    // ==================================================
-
-    const sectionResponse =
-      await fetch(
-        `${API_BASE}/api/sections?q=${encodeURIComponent(query)}`
-      );
-
-
-    if (!sectionResponse.ok) {
-
-      throw new Error(
-        "Legal provision search failed."
-      );
-
-    }
-
-
-    const sectionData =
-      await sectionResponse.json();
-
-
-    const sections =
-      Array.isArray(sectionData.sections)
-        ? sectionData.sections
-        : [];
-
-
-    // ==================================================
-    // INFER ACT / SECTION FROM VERIFIED RESULT
-    // ==================================================
-    // Only infer missing information.
-    // Never overwrite an explicitly detected Act.
-
-    if (sections.length > 0) {
-
-      let exactSection = null;
-
-
-      if (section) {
-
-        exactSection =
-          sections.find(function(item) {
-
-            const itemSection =
-              String(
-                item.section ||
-                item.number ||
-                ""
-              ).toLowerCase();
-
-            return (
-              itemSection ===
-              String(section).toLowerCase()
-            );
-
-          });
-
+    while ((m = regex.exec(q)) !== null) {
+      if (!results.includes(m[1])) {
+        results.push(m[1]);
       }
-
-
-      const bestSection =
-        exactSection ||
-        sections[0];
-
-
-      if (bestSection) {
-
-        if (!act) {
-
-          act =
-            bestSection.actId ||
-            bestSection.act_id ||
-            "";
-
-        }
-
-
-        if (!section) {
-
-          section =
-            bestSection.section ||
-            bestSection.number ||
-            "";
-
-        }
-
-      }
-
     }
+  }
 
+  return results;
+}
 
-    // ==================================================
-    // BUILD VERIFIED PROVISIONS
-    // ==================================================
+/* ---------------------------------------------------------
+   ACT + SECTION PAIR DETECTION
+--------------------------------------------------------- */
 
-    const verifiedSections =
-      sections
+function detectExplicitPairs(query) {
+  const q = clean(query);
+  const qLower = lower(query);
 
-        .map(function(item) {
+  const pairs = [];
+  const knownActs = detectKnownActs(query);
 
-          return {
+  /*
+    First look for patterns such as:
 
-            actId:
-              item.actId ||
-              item.act_id ||
-              item.act ||
-              null,
+    IPC 302
+    BNS 103
+    CrPC 154
+    IT Act 66
+  */
 
-            actName:
-              item.actName ||
-              item.act_name ||
-              item.title ||
-              item.act ||
-              null,
+  for (const act of knownActs) {
+    for (const name of act.matched ? [act.matched] : []) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-            section:
-              item.section ||
-              item.number ||
-              null,
+      const patterns = [
+        new RegExp(
+          "\\b" + escaped + "\\s+(?:section\\s*)?([0-9]+[A-Za-z-]*)\\b",
+          "i"
+        ),
+        new RegExp(
+          "\\bsection\\s+([0-9]+[A-Za-z-]*)\\s+(?:of\\s+)?(?:" +
+            escaped +
+            ")\\b",
+          "i"
+        )
+      ];
 
-            heading:
-              item.heading ||
-              item.title ||
-              null,
+      for (const regex of patterns) {
+        const match = q.match(regex);
 
-            text:
-              item.text ||
-              item.content ||
-              item.snippet ||
-              null,
+        if (match && match[1]) {
+          const section = match[1];
 
-            classification:
-              item.classification ||
-              null,
+          if (
+            !pairs.some(
+              p => p.act === act.id && p.section === section
+            )
+          ) {
+            pairs.push({
+              act: act.id,
+              section
+            });
+          }
+        }
+      }
+    }
+  }
 
-            correspondingProvisions:
-              Array.isArray(
-                item.correspondingProvisions
-              )
-                ? item.correspondingProvisions
-                : [],
+  /*
+    Special handling for common shorthand:
+    "IPC 302 vs BNS 103"
+  */
 
-            crossReferences:
-              Array.isArray(
-                item.crossReferences
-              )
-                ? item.crossReferences
-                : [],
+  const shorthand = [
+    ["ipc", /\bipc\s+([0-9]+[A-Za-z-]*)\b/gi],
+    ["bns", /\bbns\s+([0-9]+[A-Za-z-]*)\b/gi],
+    ["crpc", /\bcrpc\s+([0-9]+[A-Za-z-]*)\b/gi],
+    ["bnss", /\bbnss\s+([0-9]+[A-Za-z-]*)\b/gi],
+    ["cpc", /\bcpc\s+([0-9]+[A-Za-z-]*)\b/gi],
+    ["bsa", /\bbsa\s+([0-9]+[A-Za-z-]*)\b/gi],
+    ["pocso", /\bpocso\s+([0-9]+[A-Za-z-]*)\b/gi],
+    ["it-act", /\bit\s+act\s+([0-9]+[A-Za-z-]*)\b/gi],
+    ["ni-act", /\bni\s+act\s+([0-9]+[A-Za-z-]*)\b/gi]
+  ];
 
-            source:
-              item.source ||
-              item.url ||
-              null
+  for (const [act, regex] of shorthand) {
+    let m;
 
-          };
+    while ((m = regex.exec(qLower)) !== null) {
+      const section = m[1];
 
-        })
-
-        .filter(function(item) {
-
-          return item.text;
-
+      if (
+        !pairs.some(
+          p => p.act === act && p.section === section
+        )
+      ) {
+        pairs.push({
+          act,
+          section
         });
-
-
-    // ==================================================
-    // DETERMINE RESEARCH TYPE
-    // ==================================================
-
-    let researchType =
-      "general legal research";
-
-
-    if (act && section) {
-
-      researchType =
-        "exact statutory section research";
-
+      }
     }
+  }
 
-    else if (act && !section) {
+  return pairs;
+}
 
-      researchType =
-        "Act-specific issue research";
+/* ---------------------------------------------------------
+   DYNAMIC ACT DISCOVERY
+--------------------------------------------------------- */
 
-    }
+async function discoverAct(query) {
+  const q = clean(query);
 
-    else if (!act && !section) {
+  if (!q) return null;
 
-      researchType =
-        "natural-language issue research";
+  const actsUrl =
+    API_BASE +
+    "/acts?q=" +
+    encodeURIComponent(q) +
+    "&limit=20";
 
-    }
+  const actsData = await getJson(actsUrl);
 
+  if (actsData?.acts?.length) {
+    return chooseBestAct(actsData.acts, q);
+  }
 
-    // ==================================================
-    // RETRIEVE VERIFIED JUDGMENTS
-    // ==================================================
+  const searchUrl =
+    API_BASE +
+    "/search?kind=act&q=" +
+    encodeURIComponent(q) +
+    "&limit=20";
 
-    let judgments = [];
+  const searchData = await getJson(searchUrl);
 
+  const results =
+    searchData?.results ||
+    searchData?.hits ||
+    searchData?.search_results ||
+    [];
 
-    const judgmentParams =
-      new URLSearchParams();
+  if (results.length) {
+    return chooseBestAct(results, q);
+  }
 
+  return null;
+}
 
-    /*
-      Always send the original query.
+function chooseBestAct(acts, query) {
+  const q = lower(query);
 
-      If an Act was confidently identified,
-      restrict by Act.
+  let best = null;
+  let bestScore = -1;
 
-      If a section was confidently identified,
-      restrict by section too.
-
-      For pure issue searches with no identified
-      Act/section, allow the judgment engine to
-      perform natural-language searching.
-    */
-
-    judgmentParams.set(
-      "query",
-      query
+  for (const item of acts) {
+    const title = lower(
+      item.short_title ||
+      item.title ||
+      item.name ||
+      ""
     );
 
+    const id = lower(item.id || item.act_id || "");
 
-    if (act) {
+    let score = 0;
 
-      judgmentParams.set(
-        "act",
-        act
-      );
+    if (title && q.includes(title)) score += 100;
+    if (id && q.includes(id)) score += 80;
 
+    const words = q
+      .split(/\s+/)
+      .filter(w => w.length > 3);
+
+    for (const word of words) {
+      if (title.includes(word)) score += 5;
     }
 
-
-    if (section) {
-
-      judgmentParams.set(
-        "section",
-        section
-      );
-
+    if (score > bestScore) {
+      bestScore = score;
+      best = item;
     }
+  }
 
+  return best;
+}
 
-    const judgmentResponse =
-      await fetch(
-        `${API_BASE}/api/judgments?${judgmentParams.toString()}`
+/* ---------------------------------------------------------
+   GET EXACT PROVISION
+--------------------------------------------------------- */
+
+async function getExactProvision(act, section) {
+  if (!act || !section) return null;
+
+  const url =
+    API_BASE +
+    "/" +
+    encodeURIComponent(act) +
+    "/section/" +
+    encodeURIComponent(section);
+
+  return await getJson(url);
+}
+
+/* ---------------------------------------------------------
+   GET JUDGMENTS
+--------------------------------------------------------- */
+
+async function getJudgments(act, section, query = "") {
+  const url =
+    API_BASE +
+    "/judgments?act=" +
+    encodeURIComponent(act) +
+    "&section=" +
+    encodeURIComponent(section) +
+    "&limit=20";
+
+  const data = await getJson(url);
+
+  if (data?.judgments) {
+    return data.judgments;
+  }
+
+  /*
+    Fallback to our own judgment API.
+  */
+
+  try {
+    const ownUrl =
+      "/api/judgments?act=" +
+      encodeURIComponent(act) +
+      "&section=" +
+      encodeURIComponent(section) +
+      "&query=" +
+      encodeURIComponent(query);
+
+    const r = await fetch(ownUrl);
+
+    if (r.ok) {
+      const own = await r.json();
+
+      return (
+        own.judgments ||
+        own.results ||
+        []
       );
-
-
-    if (judgmentResponse.ok) {
-
-      const judgmentData =
-        await judgmentResponse.json();
-
-
-      judgments =
-        Array.isArray(
-          judgmentData.judgments
-        )
-          ? judgmentData.judgments
-          : [];
-
     }
+  } catch {}
 
+  return [];
+}
 
-    // ==================================================
-    // BUILD VERIFIED JUDGMENTS
-    // ==================================================
+/* ---------------------------------------------------------
+   NORMALIZE PROVISION
+--------------------------------------------------------- */
 
-    const verifiedJudgments =
-      judgments.map(function(judgment) {
+function normalizeProvision(data, act, section) {
+  if (!data) return null;
 
-        return {
+  const sectionData =
+    data.section ||
+    data.provision ||
+    data;
 
-          caseName:
-            judgment.caseName ||
-            null,
+  const actData =
+    data.act ||
+    {};
 
-          court:
-            judgment.court ||
-            null,
+  return {
+    act: act,
+    actTitle:
+      actData.short_title ||
+      actData.title ||
+      actData.name ||
+      act,
 
-          courtLevel:
-            judgment.courtLevel ||
-            null,
+    section:
+      sectionData.number ||
+      section,
 
-          date:
-            judgment.date ||
-            null,
+    heading:
+      sectionData.heading ||
+      "",
 
-          citation:
-            judgment.citation ||
-            null,
+    text:
+      sectionData.text ||
+      sectionData.body ||
+      sectionData.content ||
+      "",
 
-          cnr:
-            judgment.cnr ||
-            null,
+    classification:
+      data.classification ||
+      [],
 
-          facts:
-            judgment.facts ||
-            null,
+    correspondsTo:
+      data.corresponds_to ||
+      data.corresponding_provisions ||
+      [],
 
-          issues:
-            judgment.issues ||
-            null,
+    crossReferences:
+      data.cross_references ||
+      data.crossReferences ||
+      [],
 
-          decision:
-            judgment.decision ||
-            null,
+    judgments:
+      data.judgments ||
+      [],
 
-          ratio:
-            judgment.ratio ||
-            null,
+    source:
+      data.url ||
+      `https://indiacode.ecourtsindia.com/${act}/section/${section}/`
+  };
+}
 
-          appliedToSection:
-            judgment.appliedToSection ||
-            null,
+/* ---------------------------------------------------------
+   RETRIEVE ONE ACT/SECTION
+--------------------------------------------------------- */
 
-          basis:
-            judgment.basis ||
-            null,
+async function retrievePair(pair, query) {
+  let act = pair.act;
+  let section = pair.section;
 
-          precedentialValue:
-            judgment.precedentialValue ||
-            null,
+  const exact = await getExactProvision(act, section);
 
-          courtMarking:
-            judgment.courtMarking ||
-            null,
-
-          decidedUnder:
-            judgment.decidedUnder ||
-            null,
-
-          relevanceScore:
-            judgment.relevanceScore ??
-            null,
-
-          source:
-            judgment.source ||
-            null
-
-        };
-
-      });
-
-
-    // ==================================================
-    // VERIFIED SOURCE MATERIAL
-    // ==================================================
-
-    const verifiedMaterial = {
-
-      researchType,
-
-      query,
-
-      detectedAct:
-        act ||
-        null,
-
-      detectedSection:
-        section ||
-        null,
-
-      provisions:
-        verifiedSections,
-
-      judgments:
-        verifiedJudgments
-
+  if (!exact) {
+    return {
+      requestedAct: act,
+      requestedSection: section,
+      found: false,
+      provision: null,
+      judgments: []
     };
+  }
 
+  const provision = normalizeProvision(
+    exact,
+    act,
+    section
+  );
 
-    // ==================================================
-    // GEMINI PROMPT
-    // ==================================================
+  let judgments = await getJudgments(
+    act,
+    section,
+    query
+  );
 
-    const geminiPrompt = `
+  if (
+    (!judgments || !judgments.length) &&
+    provision.judgments?.length
+  ) {
+    judgments = provision.judgments;
+  }
 
-You are LawBot AI, an Indian legal research assistant.
+  return {
+    requestedAct: act,
+    requestedSection: section,
+    found: true,
+    provision,
+    judgments
+  };
+}
 
-The user asked:
+/* ---------------------------------------------------------
+   SINGLE-ACT NATURAL LANGUAGE RESOLUTION
+--------------------------------------------------------- */
 
-"${query}"
+async function resolveNaturalLanguagePair(query) {
+  const sections = extractSectionNumbers(query);
 
-RESEARCH TYPE:
+  if (!sections.length) return [];
 
-${researchType}
+  const knownActs = detectKnownActs(query);
 
+  /*
+    If a known Act is present but pair detection failed,
+    use the first section number with that Act.
+  */
 
-==================================================
-CRITICAL SOURCE RULE
-==================================================
+  if (knownActs.length) {
+    const act = knownActs[0].id;
 
-The VERIFIED LEGAL MATERIAL below was retrieved from
-the connected legal database.
+    return [
+      {
+        act,
+        section: sections[0]
+      }
+    ];
+  }
 
-Treat the retrieved material as the source of truth.
+  /*
+    Dynamic Act discovery.
 
-Do NOT invent:
+    Remove section wording before searching for the Act,
+    so "Section 66 ... unauthorized access" does not cause
+    an unrelated Act to win.
+  */
 
-- Acts
-- sections
-- subsections
-- legal rules
-- case names
-- citations
-- facts
-- issues
-- decisions
-- ratios
-- holdings
-- precedents
-- statutory mappings
-- quotations
-- penalties
-- procedural requirements
+  let actSearchText = query
+    .replace(
+      /\bsection\s+[0-9]+[A-Za-z-]*\b/gi,
+      ""
+    )
+    .replace(
+      /\bsec\.?\s+[0-9]+[A-Za-z-]*\b/gi,
+      ""
+    )
+    .trim();
 
-If information is not contained in the retrieved
-material, clearly say that it was not supplied by
-the connected database.
+  const discovered = await discoverAct(actSearchText);
 
-Do not use your own memory to create a case citation
-or statutory provision.
+  if (!discovered) return [];
 
-Do not claim that the results represent every
-judgment in India.
+  const act =
+    discovered.id ||
+    discovered.act_id ||
+    discovered.actId;
 
-The judgment results are only the verified judgments
-returned by the connected legal database.
+  if (!act) return [];
 
+  return [
+    {
+      act,
+      section: sections[0]
+    }
+  ];
+}
 
-==================================================
-IMPORTANT RESEARCH PRINCIPLES
-==================================================
+/* ---------------------------------------------------------
+   FORMAT MATERIAL FOR GEMINI
+--------------------------------------------------------- */
 
-For an exact statutory question:
+function buildResearchMaterial(results) {
+  return results
+    .map((result, index) => {
+      if (!result.found || !result.provision) {
+        return `
+SOURCE ${index + 1}
+Requested Act: ${result.requestedAct}
+Requested Section: ${result.requestedSection}
+STATUS: NOT FOUND
+`;
+      }
 
-Focus on the exact retrieved provision.
+      const p = result.provision;
 
-For a natural-language legal issue:
+      const judgments = (result.judgments || [])
+        .slice(0, 12)
+        .map((j, i) => {
+          return `
+Judgment ${i + 1}
+Case: ${j.title || j.caseName || ""}
+Court: ${j.court_name || j.court || ""}
+Date: ${j.date || ""}
+Citation: ${j.citation || ""}
+CNR: ${j.cnr || ""}
+Applied to section: ${j.applied_to_this_section || j.appliedToSection || ""}
+Basis: ${j.basis || ""}
+Ratio: ${j.ratio_decidendi || j.ratio || ""}
+Decision: ${j.decision || ""}
+Source: ${j.url || ""}
+`;
+        })
+        .join("\n");
 
-Identify the legal issue from the user's question,
-then connect it to the retrieved provisions and
-judgments.
+      return `
+SOURCE ${index + 1}
 
-For an Act-specific question:
+Act:
+${p.actTitle}
 
-Stay within the identified Act unless the verified
-material contains a legitimate cross-reference.
+Act ID:
+${p.act}
 
-For a multi-issue question:
+Section:
+${p.section}
 
-Separate each legal issue clearly.
+Heading:
+${p.heading}
 
-For judicial decisions:
+STATUTORY TEXT:
+${p.text}
 
-Only state facts, issues, decisions and ratios when
-those fields are actually supplied.
+CLASSIFICATION:
+${JSON.stringify(p.classification || [])}
 
-Never manufacture missing case details.
+STATUTORY CORRESPONDENCE:
+${JSON.stringify(p.correspondsTo || [])}
 
+CROSS REFERENCES:
+${JSON.stringify(p.crossReferences || [])}
 
-==================================================
-VERIFIED LEGAL MATERIAL
-==================================================
+VERIFIED JUDGMENTS:
+${judgments}
 
-${JSON.stringify(
-  verifiedMaterial,
-  null,
-  2
-)}
+SOURCE URL:
+${p.source}
+`;
+    })
+    .join("\n\n--------------------------------\n\n");
+}
 
+/* ---------------------------------------------------------
+   GEMINI
+--------------------------------------------------------- */
 
-==================================================
-ANSWER FORMAT
-==================================================
+async function askGemini(query, results) {
+  const material = buildResearchMaterial(results);
+
+  const prompt = `
+You are LawBot AI, a legal research assistant.
+
+USER QUERY:
+${query}
+
+VERIFIED LEGAL RESEARCH MATERIAL:
+${material}
+
+IMPORTANT RULES:
+
+1. The verified material above is the source of truth.
+2. Do NOT invent statutory provisions.
+3. Do NOT invent Acts.
+4. Do NOT invent judgments.
+5. Do NOT invent citations, CNR numbers, facts, ratios, decisions or punishments.
+6. If a requested provision was not found, clearly say it was not retrieved.
+7. If multiple provisions are supplied, analyze EACH provision separately.
+8. If the question compares two provisions, directly compare them.
+9. Do not confuse a section number from one Act with the same section number from another Act.
+10. For natural-language legal issues, answer the actual legal issue using the retrieved provision.
+11. Distinguish statutory text from judicial interpretation.
+12. If a statutory mapping is supplied, explain it but do not call similarity-based mapping an official legislative equivalence unless the material explicitly says so.
+13. Do not claim that the connected database contains every judgment in India.
+14. Do not provide legal advice as if you are the user's lawyer.
+15. Keep the answer useful and legally precise.
+
+For a comparison, use a table when useful.
+
+Use this structure where applicable:
 
 ## Legal Issue
 
-Identify and explain the user's actual legal question.
-
-If there are multiple issues, list them separately.
-
-
 ## Relevant Law
 
-Identify the verified Act, section or other legal
-provision relevant to the query.
+## Provision-by-Provision Analysis
 
-Explain the retrieved statutory text accurately.
-
+## Comparison
 
 ## Essential Elements
 
-Explain the legal ingredients, conditions or
-requirements contained in the verified provision.
-
-
 ## Legal Effect / Punishment
-
-Explain the punishment, penalty, liability,
-consequence or legal effect only where supported
-by the retrieved material.
-
-Do not invent punishment.
-
 
 ## Exceptions / Provisos / Explanations
 
-Explain relevant provisos, exceptions,
-explanations or qualifications found in the
-retrieved provision.
-
-
-## Related Provisions
-
-Discuss verified corresponding provisions,
-cross-references and related sections.
-
-Only use relationships supplied by the database.
-
-
 ## Statutory Mapping
-
-Explain any verified relationship between
-old and new legislation.
-
-If the database describes a relationship as
-"near-identical", "successor", "predecessor",
-or another computed relationship, describe it
-as a database relationship.
-
-Do not call a computed similarity score an
-official legislative declaration.
-
 
 ## Verified Judgments
 
-List the most relevant retrieved judgments.
-
-For each judgment provide, where supplied:
-
-- Case name
-- Court
-- Date
-- Citation
-- Facts
-- Issues
-- Decision
-- Ratio / Legal Principle
-- Application to the issue
-
-Prioritize judgments that actually discuss the
-user's legal issue.
-
-Do not manufacture missing information.
-
-
 ## Judicial Position
-
-Based only on the verified judgments, explain
-what courts have actually held.
-
-If the retrieved cases do not establish a clear
-position, say so.
-
 
 ## Practical Significance
 
-Explain how the verified law and judgments may
-matter in practice.
-
-Do not present speculation as established law.
-
-
 ## Illustrative Example
-
-Give one simple hypothetical example.
-
-Clearly label it:
-
-Illustration — not a real case.
-
 
 ## Research Limitations
 
-Briefly state when:
-
-- no verified provision was found, or
-- no verified judgment was found, or
-- the database did not supply particular details.
-
-
 ## Sources
 
-List the actual source URLs supplied by the
-connected legal database.
-
-Do not invent URLs.
-
-
-==================================================
-NO-RESULT RULES
-==================================================
-
-If no verified statutory provision was retrieved,
-say:
-
-"No verified statutory provision was retrieved from
-the connected legal database."
-
-If no verified judgments were retrieved, say:
-
-"No verified judgments were retrieved from the
-connected legal database for this query."
-
-
-End with:
-
-"LawBot AI provides legal research information and
-does not replace advice from a qualified advocate."
-
-
-Return only the research answer.
-
+When answering, prioritize the exact retrieved statutory text and verified judgment data.
 `;
 
+  const url =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" +
+    encodeURIComponent(process.env.GEMINI_API_KEY || "");
 
-    // ==================================================
-    // GEMINI API KEY
-    // ==================================================
-
-    if (!process.env.GEMINI_API_KEY) {
-
-      return res.status(500).json({
-
-        error:
-          "GEMINI_API_KEY is not configured."
-
-      });
-
-    }
-
-
-    // ==================================================
-    // GEMINI REQUEST
-    // ==================================================
-
-    const geminiResponse =
-      await fetch(
-
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${encodeURIComponent(
-          process.env.GEMINI_API_KEY
-        )}`,
-
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      contents: [
         {
-
-          method:
-            "POST",
-
-          headers: {
-
-            "Content-Type":
-              "application/json"
-
-          },
-
-          body:
-            JSON.stringify({
-
-              contents: [
-
-                {
-
-                  parts: [
-
-                    {
-
-                      text:
-                        geminiPrompt
-
-                    }
-
-                  ]
-
-                }
-
-              ]
-
-            })
-
+          role: "user",
+          parts: [
+            {
+              text: prompt
+            }
+          ]
         }
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 7000
+      }
+    })
+  });
 
-      );
+  const data = await response.json();
 
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message ||
+      "Gemini request failed"
+    );
+  }
 
-    if (!geminiResponse.ok) {
+  return (
+    data?.candidates?.[0]?.content?.parts
+      ?.map(p => p.text || "")
+      .join("\n") ||
+    "No answer generated."
+  );
+}
 
-      const errorText =
-        await geminiResponse.text();
+/* ---------------------------------------------------------
+   MAIN HANDLER
+--------------------------------------------------------- */
 
-
-      throw new Error(
-        `Gemini request failed: ${errorText}`
-      );
-
+export default async function handler(req, res) {
+  try {
+    if (req.method !== "GET" && req.method !== "POST") {
+      return res.status(405).json({
+        error: "Method not allowed"
+      });
     }
 
+    let query = "";
 
-    const geminiData =
-      await geminiResponse.json();
+    if (req.method === "POST") {
+      query =
+        req.body?.query ||
+        req.body?.q ||
+        req.body?.search ||
+        "";
+    } else {
+      query =
+        req.query?.query ||
+        req.query?.q ||
+        "";
+    }
 
+    query = clean(query);
 
-    const answer =
-      geminiData
-        ?.candidates?.[0]
-        ?.content?.parts?.[0]
-        ?.text ||
+    if (!query) {
+      return res.status(400).json({
+        error: "Missing query"
+      });
+    }
 
-      "Unable to generate a research answer.";
+    /* ---------------------------------------------
+       STEP 1 — Detect exact Act/Section pairs
+    --------------------------------------------- */
 
+    let pairs = detectExplicitPairs(query);
 
-    // ==================================================
-    // FINAL RESPONSE
-    // ==================================================
+    /* ---------------------------------------------
+       STEP 2 — Natural language fallback
+    --------------------------------------------- */
+
+    if (!pairs.length) {
+      pairs = await resolveNaturalLanguagePair(query);
+    }
+
+    /* ---------------------------------------------
+       STEP 3 — Retrieve exact provisions
+    --------------------------------------------- */
+
+    let results = [];
+
+    for (const pair of pairs.slice(0, 8)) {
+      const result = await retrievePair(
+        pair,
+        query
+      );
+
+      results.push(result);
+    }
+
+    /* ---------------------------------------------
+       STEP 4 — If no exact pair found,
+       perform broader research through sections API
+    --------------------------------------------- */
+
+    if (!results.length) {
+      try {
+        const fallbackUrl =
+          "/api/sections?q=" +
+          encodeURIComponent(query) +
+          "&query=" +
+          encodeURIComponent(query);
+
+        const r = await fetch(fallbackUrl);
+
+        if (r.ok) {
+          const data = await r.json();
+
+          const provisions =
+            data.provisions ||
+            data.sections ||
+            data.results ||
+            [];
+
+          for (const item of provisions.slice(0, 5)) {
+            if (
+              item.act &&
+              item.section
+            ) {
+              const result =
+                await retrievePair(
+                  {
+                    act: item.act,
+                    section: item.section
+                  },
+                  query
+                );
+
+              results.push(result);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    /* ---------------------------------------------
+       STEP 5 — Remove duplicates
+    --------------------------------------------- */
+
+    const seen = new Set();
+
+    results = results.filter(result => {
+      const key =
+        result.requestedAct +
+        ":" +
+        result.requestedSection;
+
+      if (seen.has(key)) return false;
+
+      seen.add(key);
+      return true;
+    });
+
+    /* ---------------------------------------------
+       STEP 6 — Gemini
+    --------------------------------------------- */
+
+    let answer;
+
+    if (process.env.GEMINI_API_KEY) {
+      answer = await askGemini(
+        query,
+        results
+      );
+    } else {
+      answer =
+        "Gemini API key is not configured.";
+    }
+
+    /* ---------------------------------------------
+       STEP 7 — Build frontend-friendly output
+    --------------------------------------------- */
+
+    const verifiedProvisions = results
+      .filter(r => r.found && r.provision)
+      .map(r => ({
+        act: r.provision.act,
+        actTitle: r.provision.actTitle,
+        section: r.provision.section,
+        heading: r.provision.heading,
+        text: r.provision.text,
+        classification:
+          r.provision.classification,
+        correspondsTo:
+          r.provision.correspondsTo,
+        crossReferences:
+          r.provision.crossReferences,
+        source:
+          r.provision.source
+      }));
+
+    const verifiedJudgments = [];
+
+    for (const result of results) {
+      for (const j of result.judgments || []) {
+        verifiedJudgments.push({
+          ...j,
+          verifiedAct:
+            result.provision?.act ||
+            result.requestedAct,
+          verifiedSection:
+            result.provision?.section ||
+            result.requestedSection
+        });
+      }
+    }
+
+    const mappings = [];
+
+    for (const provision of verifiedProvisions) {
+      if (Array.isArray(provision.correspondsTo)) {
+        mappings.push(
+          ...provision.correspondsTo.map(m => ({
+            fromAct: provision.act,
+            fromSection: provision.section,
+            ...m
+          }))
+        );
+      }
+    }
 
     return res.status(200).json({
+      answer,
 
       verified:
-        verifiedSections.length > 0 ||
-        verifiedJudgments.length > 0,
+        verifiedProvisions.length > 0,
 
       query,
 
-      researchType,
-
-      act:
-        act ||
-        null,
-
-      section:
-        section ||
-        null,
+      provisions:
+        verifiedProvisions,
 
       sections:
-        verifiedSections,
+        verifiedProvisions,
+
+      verifiedProvisions,
 
       judgments:
         verifiedJudgments,
 
-      sectionCount:
-        verifiedSections.length,
+      verifiedJudgments,
 
-      judgmentCount:
-        verifiedJudgments.length,
+      mappings,
 
-      answer
+      correspondingProvisions:
+        mappings,
 
+      sources:
+        verifiedProvisions.map(
+          p => ({
+            act: p.actTitle,
+            section: p.section,
+            heading: p.heading,
+            source: p.source
+          })
+        ),
+
+      research: {
+        exactPairsDetected: pairs,
+        retrievedPairs: results.map(r => ({
+          act: r.requestedAct,
+          section: r.requestedSection,
+          found: r.found
+        }))
+      }
     });
 
-
   } catch (error) {
-
     console.error(
       "Research API error:",
       error
     );
 
-
     return res.status(500).json({
-
       error:
-        error?.message ||
-        "Unable to complete legal research."
-
+        error.message ||
+        "Research failed"
     });
-
   }
-
 }
