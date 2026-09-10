@@ -35,12 +35,15 @@ export default async function handler(req, res) {
 
     /*
       --------------------------------------------------
-      ACT / SECTION DETECTION
+      BASIC ACT / SECTION DETECTION
       --------------------------------------------------
     */
 
+    const q = query.toLowerCase();
+
     let act = "";
     let section = "";
+
 
     if (
       /\bBNS\b|bharatiya nyaya sanhita/i.test(query)
@@ -55,9 +58,7 @@ export default async function handler(req, res) {
     }
 
     else if (
-      /\bBSA\b|
-      bharatiya sakshya adhiniyam|
-      evidence act/i.test(query)
+      /\bBSA\b|bharatiya sakshya adhiniyam|evidence act/i.test(query)
     ) {
       act = "bsa";
     }
@@ -81,9 +82,7 @@ export default async function handler(req, res) {
     }
 
     else if (
-      /\bNI\s*Act\b|
-      negotiable instruments act|
-      cheque bounce/i.test(query)
+      /\bNI\s*Act\b|negotiable instruments act|cheque bounce/i.test(query)
     ) {
       act = "ni-act";
     }
@@ -99,6 +98,7 @@ export default async function handler(req, res) {
       query.match(
         /\b(?:NI\s*ACT|N\.I\.\s*ACT)\s*[-:]?\s*(\d+[A-Za-z]?)\b/i
       );
+
 
     if (sectionMatch) {
       section = sectionMatch[1];
@@ -118,11 +118,13 @@ export default async function handler(req, res) {
     const host =
       req.headers.host;
 
+
     if (!host) {
       return res.status(500).json({
         error: "Unable to determine research server."
       });
     }
+
 
     const baseUrl =
       `${protocol}://${host}`;
@@ -130,11 +132,12 @@ export default async function handler(req, res) {
 
     /*
       --------------------------------------------------
-      RETRIEVE VERIFIED SECTIONS
+      RETRIEVE VERIFIED LEGAL SECTIONS
       --------------------------------------------------
     */
 
     let sectionResults = [];
+
 
     try {
 
@@ -216,7 +219,7 @@ export default async function handler(req, res) {
 
     /*
       --------------------------------------------------
-      PRIORITIZE EXACT PROVISION
+      PRIORITIZE EXACT ACT + SECTION
       --------------------------------------------------
     */
 
@@ -244,11 +247,9 @@ export default async function handler(req, res) {
 
         sectionResults = [
           exactSection,
-
           ...sectionResults.filter(
             item => item !== exactSection
           )
-
         ];
 
       }
@@ -263,6 +264,7 @@ export default async function handler(req, res) {
     */
 
     let judgmentResults = [];
+
 
     try {
 
@@ -400,20 +402,20 @@ export default async function handler(req, res) {
                   .map(mapping => {
 
                     return `
-${mapping.act || "Unknown Act"}
-Section ${mapping.section || "Unknown"}
-Relationship: ${
-  mapping.relation ||
-  "Corresponding provision"
-}
-Score: ${
-  mapping.score ??
-  "Not provided"
-}
-Source: ${
-  mapping.url ||
-  "Not provided"
-}
+Act:
+${mapping.act || "Unknown"}
+
+Section:
+${mapping.section || "Unknown"}
+
+Relationship:
+${mapping.relation || "Corresponding provision"}
+
+Similarity Score:
+${mapping.score ?? "Not provided"}
+
+Source:
+${mapping.url || "Not provided"}
 `;
 
                   })
@@ -521,30 +523,15 @@ ${item.source || "Not provided"}
 
     /*
       --------------------------------------------------
-      GEMINI PROMPT
+      GEMINI RESEARCH PROMPT
       --------------------------------------------------
     */
 
     const prompt = `
-
 You are LawBot AI, an Indian legal research assistant.
 
-The user's question is:
-
+USER QUESTION:
 ${query}
-
-
-==================================================
-IMPORTANT SOURCE RULE
-==================================================
-
-You MUST use the retrieved verified legal material
-below as your primary and controlling research material.
-
-Do NOT invent legal information.
-
-Do NOT pretend that information exists when the
-connected legal database did not provide it.
 
 
 ==================================================
@@ -562,17 +549,47 @@ ${verifiedJudgmentsText}
 
 
 ==================================================
+CORE RESEARCH RULE
+==================================================
+
+Use the retrieved verified legal material above as
+the primary source of truth.
+
+Accuracy is more important than completeness.
+
+NEVER invent:
+
+- cases
+- citations
+- courts
+- dates
+- statutory sections
+- punishment
+- facts
+- issues
+- decisions
+- legal principles
+- exceptions
+- provisos
+- definitions
+
+If information is not supplied by the retrieved
+source, clearly say that it was not provided.
+
+
+==================================================
 DETAILED SECTION RESEARCH
 ==================================================
 
-When the user asks about a particular statutory
-section, provide a substantially detailed explanation.
+When the user asks about a particular section,
+provide a useful and detailed legal-research
+explanation.
 
-Where the verified material supports it, explain:
+Where supported by the retrieved material, explain:
 
-1. What the section means.
+1. Meaning of the provision.
 
-2. The purpose and legal effect of the section.
+2. Purpose and legal effect.
 
 3. Essential ingredients / elements.
 
@@ -581,94 +598,75 @@ Where the verified material supports it, explain:
 
 5. Punishment, penalty or consequence.
 
-6. Exceptions, provisos or explanations.
+6. Exceptions, provisos and explanations.
 
-7. Important definitions or cross-references.
+7. Relevant definitions.
 
 8. Related statutory provisions.
 
 9. Corresponding provisions under earlier/current
-   legislation where the database provides them.
+   legislation.
 
-10. Verified judgments interpreting or applying
-    the provision.
+10. Verified judicial interpretation.
 
 11. Practical significance.
 
-12. A simple illustrative example where useful.
+12. A simple hypothetical illustration when useful.
+
 
 IMPORTANT:
 
-If the retrieved material does not provide a fact,
-do not manufacture it.
+Do not manufacture any of these details.
 
-You may explain a statutory concept using general
-legal reasoning only when it is directly supported
-by the retrieved statutory material.
+If the retrieved material does not contain enough
+information for a particular point, say:
 
-Do not invent section numbers.
-
-Do not invent punishment.
-
-Do not invent exceptions.
-
-Do not invent case law.
-
-Do not invent citations.
+"Not established from the retrieved source material."
 
 
 ==================================================
 JUDGMENT RULES
 ==================================================
 
-Only discuss judgments appearing in VERIFIED JUDGMENTS.
+Only discuss judgments listed under VERIFIED JUDGMENTS.
 
 For each relevant judgment, distinguish:
 
 - Facts
 - Issues
 - Decision
-- Ratio / legal principle
+- Ratio / Legal Principle
 - Application to the section
-- Precedential value
+- Precedential Value
 
-If a field says:
+If a field says "Not provided by source",
+do not fill it from memory.
 
-"Not provided by source"
+Never create a citation from your own knowledge.
 
-do NOT fill it from memory.
-
-If there are many judgments, prioritize the judgments
-most directly relevant to the user's question.
-
-Never claim that the retrieved corpus contains every
+Never claim the connected corpus contains every
 judgment in India.
 
-Use wording such as:
-
-"Judgments retrieved from the connected legal database."
-
 
 ==================================================
-STATUTORY MAPPING RULES
+STATUTORY MAPPING
 ==================================================
 
-If a corresponding provision is supplied, report it.
+If a corresponding provision is supplied by the
+database, report it accurately.
 
 For example:
 
 IPC Section 302
 → BNS Section 103
 
-But do NOT describe a database similarity mapping as
-an officially enacted equivalence unless the source
-specifically establishes that.
+However, if the database describes a relationship
+as "near-identical", "similar", or another database
+classification, preserve that wording.
 
-Clearly distinguish:
-
-- statutory text
-- database mapping
-- judicial interpretation
+Do NOT describe a similarity mapping as an officially
+enacted equivalence unless the source specifically
+establishes that.
 
 
 ==================================================
@@ -676,26 +674,15 @@ NO VERIFIED MATERIAL
 ==================================================
 
 If no verified statutory provision was retrieved,
-say:
+say exactly:
 
 "No verified statutory provision was retrieved for
 this research query."
 
-If no verified judgment was retrieved, say:
+If no verified judgment was retrieved, say exactly:
 
 "No verified judgment was retrieved for this research
 query."
-
-
-==================================================
-DO NOT OVERQUOTE
-==================================================
-
-Do not reproduce unnecessarily large amounts of
-statutory text.
-
-Explain the provision in your own words and use only
-the retrieved text necessary to identify the law.
 
 
 ==================================================
@@ -704,11 +691,11 @@ RESPONSE FORMAT
 
 ## Legal Issue
 
-Clearly identify what the legal question is.
+Clearly identify the legal question.
 
 ## Relevant Provision
 
-Give:
+Explain:
 
 - Act
 - Section
@@ -718,34 +705,31 @@ Give:
 
 ## Essential Elements
 
-Explain the important ingredients/elements of the
-provision.
-
-If the retrieved source does not provide enough
-information to identify them confidently, say so.
+Explain the important ingredients/elements supported
+by the retrieved material.
 
 ## Punishment / Consequence
 
-State the punishment, penalty or legal consequence
-only when supported by the retrieved material.
+State punishment or consequence only when supported
+by the retrieved material.
 
 ## Exceptions / Provisos / Explanations
 
-Explain these only when supported by the retrieved
+Explain only what is supported by the retrieved
 material.
 
 ## Related Provisions
 
-Identify relevant connected provisions supplied by
-the retrieved material.
+Identify relevant connected provisions.
 
 ## Statutory Mapping
 
-Explain any verified mapping supplied by the database.
+Explain corresponding provisions supplied by the
+database.
 
 ## Verified Judgments
 
-For each relevant judgment:
+For each relevant verified judgment provide:
 
 ### Case Name
 
@@ -757,26 +741,26 @@ For each relevant judgment:
 - Decision:
 - Ratio / Legal Principle:
 - Application to Section:
+- Precedential Value:
 - Why Relevant:
 
-Never invent missing fields.
+Never invent missing information.
 
 ## Practical Significance
 
-Explain how the retrieved provision and judgments
-matter in practice.
+Explain the practical significance of the retrieved
+law and judgments.
 
 ## Illustrative Example
 
-Give a simple hypothetical example when useful.
+Provide a short hypothetical example where useful.
 
 Clearly label it as an illustration and not as an
 additional legal authority.
 
 ## Sources
 
-List the source links supplied by the connected
-legal database.
+List the supplied source links.
 
 End with:
 
@@ -786,14 +770,14 @@ legal advice."
 
 
 ==================================================
-FINAL SAFETY RULE
+FINAL RULE
 ==================================================
 
-Accuracy is more important than completeness.
+Do not rely on unsupported memory when the retrieved
+legal source material is incomplete.
 
-If the connected legal material is insufficient,
-say what is missing rather than guessing.
-
+If something cannot be established from the retrieved
+material, say so clearly.
 `;
 
 
@@ -926,4 +910,4 @@ say what is missing rather than guessing.
 
   }
 
-}
+      }
