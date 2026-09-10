@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     let court = "";
 
     // -----------------------------------------------
-    // GET REQUEST DATA
+    // REQUEST DATA
     // -----------------------------------------------
 
     if (req.method === "POST") {
@@ -43,7 +43,6 @@ export default async function handler(req, res) {
     // AUTOMATIC LEGAL CONTEXT
     // -----------------------------------------------
 
-    // Cheque bounce normally refers to Section 138
     if (
       !act &&
       (
@@ -62,7 +61,6 @@ export default async function handler(req, res) {
     }
 
 
-    // Negotiable Instruments Act
     if (
       !act &&
       (
@@ -84,7 +82,7 @@ export default async function handler(req, res) {
 
       const sectionMatch =
         q.match(
-          /\b(?:section|sec\.?)\s*(\d+[a-z]?)\b/i
+          /\b(?:section|sec\.?)\s*(\d+[a-z]?(?:\([a-z0-9]+\))?)\b/i
         ) ||
         q.match(
           /\b(?:BNS|BNSS|BSA|IPC|CrPC|CPC)\s*[-:]?\s*(\d+[a-z]?)\b/i
@@ -118,59 +116,130 @@ export default async function handler(req, res) {
 
 
     // -----------------------------------------------
-    // NATURAL LANGUAGE DATABASE SEARCH
+    // NATURAL LANGUAGE ACT/SECTION DISCOVERY
     // -----------------------------------------------
 
-    if (!act && !section && userQuery) {
+    if ((!act || !section) && userQuery) {
 
-      const searchUrl =
-        `https://indiacode.ecourtsindia.com/api/v1/search?q=${encodeURIComponent(userQuery)}&limit=20`;
+      try {
 
-      const searchResponse =
-        await fetch(searchUrl);
+        const searchUrl =
+          `https://indiacode.ecourtsindia.com/api/v1/search?` +
+          new URLSearchParams({
+            q: userQuery,
+            kind: "section",
+            limit: "40"
+          }).toString();
 
-      const searchData =
-        await searchResponse.json();
+        const searchResponse =
+          await fetch(searchUrl);
 
+        if (searchResponse.ok) {
 
-      if (!searchResponse.ok) {
+          const searchData =
+            await searchResponse.json();
 
-        return res.status(searchResponse.status).json({
-          error:
-            searchData.error ||
-            "Legal search failed"
-        });
-
-      }
-
-
-      const results =
-        Array.isArray(searchData.results)
-          ? searchData.results
-          : [];
+          const results =
+            Array.isArray(searchData.results)
+              ? searchData.results
+              : [];
 
 
-      const sectionResult =
-        results.find(function(result) {
-          return result.kind === "section";
-        });
+          const requestedSection =
+            section
+              ? String(section).toLowerCase()
+              : null;
 
 
-      if (sectionResult && sectionResult.ref) {
+          const candidate =
+            results.find(function(result) {
 
-        const parts =
-          String(sectionResult.ref).split("/");
+              const resultSection =
+                String(
+                  result.section ||
+                  result.number ||
+                  ""
+                ).toLowerCase();
+
+              return (
+                requestedSection &&
+                resultSection === requestedSection
+              );
+
+            }) ||
+            results.find(function(result) {
+
+              return result.kind === "section";
+
+            });
 
 
-        if (
-          parts.length >= 3 &&
-          parts[1] === "section"
-        ) {
+          if (candidate) {
 
-          act = parts[0];
-          section = parts[2];
+            let discoveredAct = null;
+            let discoveredSection = null;
+
+
+            if (candidate.ref) {
+
+              const parts =
+                String(candidate.ref).split("/");
+
+              if (
+                parts.length >= 3 &&
+                parts[1] === "section"
+              ) {
+
+                discoveredAct = parts[0];
+                discoveredSection = parts[2];
+
+              }
+
+            }
+
+
+            if (candidate.url) {
+
+              const urlMatch =
+                candidate.url.match(
+                  /\/([^/]+)\/section\/([^/?#]+)/i
+                );
+
+              if (urlMatch) {
+
+                discoveredAct =
+                  discoveredAct ||
+                  urlMatch[1];
+
+                discoveredSection =
+                  discoveredSection ||
+                  decodeURIComponent(
+                    urlMatch[2]
+                  );
+
+              }
+
+            }
+
+
+            if (!act && discoveredAct) {
+              act = discoveredAct;
+            }
+
+            if (!section && discoveredSection) {
+              section = discoveredSection;
+            }
+
+          }
 
         }
+
+      } catch (searchError) {
+
+        console.error(
+          "Natural language legal search error:",
+          searchError
+        );
 
       }
 
@@ -189,16 +258,13 @@ export default async function handler(req, res) {
       params.set("act", act);
     }
 
-
     if (section) {
       params.set("section", section);
     }
 
-
     if (court) {
       params.set("court", court);
     }
-
 
     params.set("limit", "100");
 
@@ -219,7 +285,6 @@ export default async function handler(req, res) {
 
       const response =
         await fetch(url);
-
 
       const data =
         await response.json();
@@ -256,10 +321,11 @@ export default async function handler(req, res) {
 
 
     // -----------------------------------------------
-    // RELEVANCE SCORING
+    // STOP WORDS
     // -----------------------------------------------
 
     const stopWords = new Set([
+
       "the",
       "and",
       "for",
@@ -278,24 +344,33 @@ export default async function handler(req, res) {
       "court",
       "high",
       "section",
+      "sections",
       "act",
       "under",
-      "on",
-      "of",
-      "to",
-      "in",
-      "was",
-      "were",
-      "is",
-      "are",
-      "a",
-      "an",
+      "about",
       "what",
       "which",
       "how",
       "does",
       "can",
-      "about"
+      "tell",
+      "explain",
+      "meaning",
+      "law",
+      "legal",
+      "provision",
+      "india",
+      "indian",
+      "of",
+      "to",
+      "in",
+      "on",
+      "is",
+      "are",
+      "was",
+      "were",
+      "a",
+      "an"
     ]);
 
 
@@ -313,97 +388,241 @@ export default async function handler(req, res) {
         });
 
 
+    // -----------------------------------------------
+    // NORMALIZE
+    // -----------------------------------------------
+
+    function normalize(value) {
+
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    }
+
+
+    // -----------------------------------------------
+    // RELEVANCE SCORING
+    // -----------------------------------------------
+
     function calculateScore(judgment) {
 
       const title =
-        String(
-          judgment.title || ""
-        ).toLowerCase();
+        normalize(
+          judgment.title ||
+          judgment.case_name
+        );
 
       const ratio =
-        String(
-          judgment.ratio_decidendi || ""
-        ).toLowerCase();
+        normalize(
+          judgment.ratio_decidendi ||
+          judgment.ratio
+        );
 
       const applied =
-        String(
-          judgment.applied_to_this_section || ""
-        ).toLowerCase();
+        normalize(
+          judgment.applied_to_this_section
+        );
 
       const basis =
-        String(
-          judgment.basis || ""
-        ).toLowerCase();
+        normalize(
+          judgment.basis
+        );
 
       const facts =
-        String(
-          judgment.facts || ""
-        ).toLowerCase();
+        normalize(
+          judgment.facts ||
+          judgment.case_facts
+        );
 
       const issues =
-        String(
-          judgment.issues || ""
-        ).toLowerCase();
+        normalize(
+          judgment.issues ||
+          judgment.legal_issues
+        );
 
       const decision =
-        String(
-          judgment.decision || ""
-        ).toLowerCase();
+        normalize(
+          judgment.decision ||
+          judgment.holding
+        );
+
+      const decidedUnder =
+        normalize(
+          judgment.decided_under
+        );
+
 
       const text =
-        `${title} ${ratio} ${applied} ${basis} ${facts} ${issues} ${decision}`;
+        [
+          title,
+          ratio,
+          applied,
+          basis,
+          facts,
+          issues,
+          decision,
+          decidedUnder
+        ].join(" ");
 
 
       let score = 0;
 
 
+      // ---------------------------------------------
+      // VERY STRONG EXACT SECTION SIGNAL
+      // ---------------------------------------------
+
+      if (section) {
+
+        const sectionNumber =
+          normalize(section);
+
+        const sectionPatterns = [
+
+          `section ${sectionNumber}`,
+          `section ${sectionNumber} of`,
+          `section ${sectionNumber} it`,
+          `section ${sectionNumber} act`
+
+        ];
+
+
+        sectionPatterns.forEach(function(pattern) {
+
+          if (text.includes(pattern)) {
+            score += 35;
+          }
+
+        });
+
+
+        // Database says judgment applies directly
+        if (
+          applied &&
+          applied.includes(sectionNumber)
+        ) {
+          score += 80;
+        }
+
+
+        // Database basis mentions section
+        if (
+          basis &&
+          basis.includes(sectionNumber)
+        ) {
+          score += 45;
+        }
+
+
+        // Decided under the section
+        if (
+          decidedUnder &&
+          decidedUnder.includes(sectionNumber)
+        ) {
+          score += 60;
+        }
+
+      }
+
+
+      // ---------------------------------------------
+      // FIELD-WEIGHTED QUERY MATCH
+      // ---------------------------------------------
+
       queryWords.forEach(function(word) {
 
-        // Case title
         if (title.includes(word)) {
+          score += 12;
+        }
+
+        if (ratio.includes(word)) {
           score += 10;
         }
 
-        // Ratio
-        if (ratio.includes(word)) {
+        if (applied.includes(word)) {
+          score += 14;
+        }
+
+        if (basis.includes(word)) {
           score += 8;
         }
 
-        // Application to section
-        if (applied.includes(word)) {
+        if (issues.includes(word)) {
+          score += 7;
+        }
+
+        if (decision.includes(word)) {
           score += 6;
         }
 
-        // Database basis
-        if (basis.includes(word)) {
-          score += 4;
-        }
-
-        // Facts
         if (facts.includes(word)) {
-          score += 4;
-        }
-
-        // Issues
-        if (issues.includes(word)) {
-          score += 4;
-        }
-
-        // Decision
-        if (decision.includes(word)) {
-          score += 4;
-        }
-
-        // General match
-        if (text.includes(word)) {
-          score += 2;
+          score += 3;
         }
 
       });
 
 
       // ---------------------------------------------
-      // NOTICE / SERVICE RELEVANCE
+      // PHRASE MATCH
+      // ---------------------------------------------
+
+      const importantPhrases = [];
+
+      if (
+        q.includes("computer related offence") ||
+        q.includes("computer related offences")
+      ) {
+        importantPhrases.push(
+          "computer related"
+        );
+      }
+
+      if (
+        q.includes("unauthorized access") ||
+        q.includes("unauthorised access")
+      ) {
+        importantPhrases.push(
+          "unauthorized access",
+          "unauthorised access"
+        );
+      }
+
+      if (
+        q.includes("cheque bounce") ||
+        q.includes("check bounce")
+      ) {
+        importantPhrases.push(
+          "cheque bounce",
+          "dishonour",
+          "dishonor"
+        );
+      }
+
+      if (
+        q.includes("notice") ||
+        q.includes("service of notice")
+      ) {
+        importantPhrases.push(
+          "notice",
+          "service of notice"
+        );
+      }
+
+
+      importantPhrases.forEach(function(phrase) {
+
+        if (text.includes(phrase)) {
+          score += 20;
+        }
+
+      });
+
+
+      // ---------------------------------------------
+      // NOTICE / SERVICE
       // ---------------------------------------------
 
       const noticeWords = [
@@ -425,14 +644,14 @@ export default async function handler(req, res) {
           q.includes(word) &&
           text.includes(word)
         ) {
-          score += 12;
+          score += 15;
         }
 
       });
 
 
       // ---------------------------------------------
-      // CHEQUE BOUNCE RELEVANCE
+      // CHEQUE BOUNCE
       // ---------------------------------------------
 
       if (
@@ -441,13 +660,61 @@ export default async function handler(req, res) {
           q.includes("check bounce") ||
           q.includes("dishonoured cheque") ||
           q.includes("dishonored cheque")
-        )
-        &&
+        ) &&
         (
           text.includes("cheque") ||
           text.includes("dishonour") ||
           text.includes("dishonor")
         )
+      ) {
+
+        score += 25;
+
+      }
+
+
+      // ---------------------------------------------
+      // DATA QUALITY BONUS
+      // ---------------------------------------------
+
+      if (ratio) {
+        score += 5;
+      }
+
+      if (applied) {
+        score += 10;
+      }
+
+      if (issues) {
+        score += 3;
+      }
+
+      if (decision) {
+        score += 3;
+      }
+
+
+      // ---------------------------------------------
+      // COURT BONUS
+      // ---------------------------------------------
+
+      const courtName =
+        normalize(
+          judgment.court_name ||
+          judgment.court
+        );
+
+
+      if (
+        court === "SC" &&
+        courtName.includes("supreme")
+      ) {
+        score += 15;
+      }
+
+      if (
+        court === "HC" &&
+        courtName.includes("high")
       ) {
         score += 10;
       }
@@ -459,7 +726,7 @@ export default async function handler(req, res) {
 
 
     // -----------------------------------------------
-    // SORT BY RELEVANCE
+    // RANK
     // -----------------------------------------------
 
     const rankedJudgments =
@@ -467,9 +734,12 @@ export default async function handler(req, res) {
         .map(function(judgment) {
 
           return {
+
             judgment,
+
             score:
               calculateScore(judgment)
+
           };
 
         })
@@ -500,7 +770,7 @@ export default async function handler(req, res) {
             relevanceScore:
               item.score,
 
-            // Identity
+
             caseName:
               judgment.title ||
               judgment.case_name ||
@@ -528,7 +798,7 @@ export default async function handler(req, res) {
               judgment.cnr ||
               null,
 
-            // Research material
+
             facts:
               judgment.facts ||
               judgment.case_facts ||
@@ -539,22 +809,28 @@ export default async function handler(req, res) {
               judgment.legal_issues ||
               null,
 
+
             decision:
-  (
-    judgment.decision &&
-    !/\.(pdf|doc|docx)$/i.test(
-      String(judgment.decision).trim()
-    )
-  )
-    ? judgment.decision
-    : (
-        judgment.holding &&
-        !/\.(pdf|doc|docx)$/i.test(
-          String(judgment.holding).trim()
-        )
-      )
-        ? judgment.holding
-        : null,
+              (
+                judgment.decision &&
+                !/\.(pdf|doc|docx)$/i.test(
+                  String(
+                    judgment.decision
+                  ).trim()
+                )
+              )
+                ? judgment.decision
+                : (
+                    judgment.holding &&
+                    !/\.(pdf|doc|docx)$/i.test(
+                      String(
+                        judgment.holding
+                      ).trim()
+                    )
+                  )
+                    ? judgment.holding
+                    : null,
+
 
             ratio:
               judgment.ratio_decidendi ||
