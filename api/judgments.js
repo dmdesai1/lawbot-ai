@@ -1,6 +1,9 @@
+
 export default async function handler(req, res) {
   if (req.method !== "GET" && req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
   try {
@@ -14,6 +17,7 @@ export default async function handler(req, res) {
 
     if (req.method === "POST") {
       const body = req.body || {};
+
       query = body.query || "";
       act = body.act || "";
       section = body.section || "";
@@ -21,7 +25,9 @@ export default async function handler(req, res) {
       source = body.source || "";
       id = body.id || body.cnr || "";
       caseName = body.caseName || "";
+
     } else {
+
       query = req.query?.query || "";
       act = req.query?.act || "";
       section = req.query?.section || "";
@@ -31,11 +37,15 @@ export default async function handler(req, res) {
       caseName = req.query?.caseName || "";
     }
 
-    const userQuery = String(query).trim();
-    const q = userQuery.toLowerCase();
+    const userQuery =
+      String(query).trim();
+
+    const q =
+      userQuery.toLowerCase();
 
     const API_BASE =
       "https://indiacode.ecourtsindia.com/api/v1";
+
 
     /* =====================================================
        JUDGMENT READER
@@ -43,171 +53,400 @@ export default async function handler(req, res) {
 
     if (source || id || caseName) {
 
-      /* Direct source */
-      if (source) {
-        try {
-          const r = await fetch(source);
+      /*
+       * PRIMARY METHOD:
+       * Search the connected judgment database
+       * using the CNR.
+       */
 
-          if (r.ok) {
-            const data = await r.json();
+      if (id) {
+
+        try {
+
+          const params =
+            new URLSearchParams();
+
+          params.set(
+            "cnr",
+            String(id).trim()
+          );
+
+          params.set(
+            "limit",
+            "100"
+          );
+
+          const readerUrl =
+            `${API_BASE}/judgments?${params.toString()}`;
+
+          const response =
+            await fetch(readerUrl);
+
+          const data =
+            await response.json();
+
+          if (
+            response.ok &&
+            Array.isArray(data.judgments) &&
+            data.judgments.length > 0
+          ) {
+
+            /*
+             * Prefer a judgment/order record where
+             * possible. Otherwise use first result.
+             */
+
+            let selected =
+              data.judgments.find(j => {
+
+                const order =
+                  String(
+                    j.order ||
+                    j.document_type ||
+                    j.type ||
+                    ""
+                  ).toLowerCase();
+
+                return (
+                  order.includes("judg") ||
+                  order.includes("order")
+                );
+              });
+
+            if (!selected) {
+              selected =
+                data.judgments[0];
+            }
 
             return res.status(200).json({
+
               verified: true,
+
               mode: "reader",
-              judgment: normalizeJudgment(
-                data.judgment || data.result || data
-              )
+
+              judgment:
+                normalizeJudgment(selected),
+
+              relatedOrders:
+                data.judgments.map(
+                  normalizeJudgment
+                )
             });
           }
-        } catch {}
-      }
 
-      /* Judgment ID / CNR */
-      if (id) {
-        const urls = [
-          `${API_BASE}/judgments/${encodeURIComponent(id)}`,
-          `${API_BASE}/judgment/${encodeURIComponent(id)}`
-        ];
+        } catch (error) {
 
-        for (const url of urls) {
-          try {
-            const r = await fetch(url);
-
-            if (r.ok) {
-              const data = await r.json();
-
-              return res.status(200).json({
-                verified: true,
-                mode: "reader",
-                judgment: normalizeJudgment(
-                  data.judgment || data.result || data
-                )
-              });
-            }
-          } catch {}
+          console.error(
+            "CNR judgment lookup failed:",
+            error
+          );
         }
       }
 
-      /* Case name */
+
+      /*
+       * SOURCE FALLBACK
+       *
+       * We do not assume that the source URL
+       * returns JSON. It may be HTML/PDF.
+       *
+       * Therefore return it as a verified source
+       * rather than trying to parse it incorrectly.
+       */
+
+      if (source) {
+
+        return res.status(200).json({
+
+          verified: true,
+
+          mode: "reader",
+
+          sourceOnly: true,
+
+          judgment:
+            normalizeJudgment({
+
+              title:
+                caseName || null,
+
+              cnr:
+                id || null,
+
+              url:
+                source
+            })
+
+        });
+      }
+
+
+      /*
+       * CASE NAME FALLBACK
+       *
+       * Search the judgment endpoint and compare
+       * case names locally.
+       */
+
       if (caseName) {
+
         try {
-          const searchUrl =
-            `${API_BASE}/search?` +
-            new URLSearchParams({
-              q: caseName,
-              kind: "judgment",
-              limit: "20"
-            }).toString();
 
-          const r = await fetch(searchUrl);
+          const searchParams =
+            new URLSearchParams();
 
-          if (r.ok) {
-            const data = await r.json();
+          searchParams.set(
+            "limit",
+            "100"
+          );
 
-            const results =
-              data.results ||
-              data.judgments ||
-              [];
+          const response =
+            await fetch(
+              `${API_BASE}/judgments?${searchParams.toString()}`
+            );
 
-            if (results.length) {
+          const data =
+            await response.json();
+
+          if (
+            response.ok &&
+            Array.isArray(data.judgments)
+          ) {
+
+            const wanted =
+              normalize(caseName);
+
+            const match =
+              data.judgments.find(j => {
+
+                const title =
+                  normalize(
+                    j.title ||
+                    j.case_name ||
+                    j.caseName ||
+                    ""
+                  );
+
+                if (!title) return false;
+
+                return (
+                  title === wanted ||
+                  title.includes(wanted) ||
+                  wanted.includes(title)
+                );
+              });
+
+            if (match) {
+
               return res.status(200).json({
+
                 verified: true,
+
                 mode: "reader",
+
                 judgment:
-                  normalizeJudgment(results[0]),
-                results:
-                  results.map(normalizeJudgment)
+                  normalizeJudgment(match)
               });
             }
           }
-        } catch {}
+
+        } catch (error) {
+
+          console.error(
+            "Case-name lookup failed:",
+            error
+          );
+        }
       }
 
+
       return res.status(404).json({
+
         verified: false,
+
         mode: "reader",
+
         error:
           "Judgment not found in the connected legal database"
       });
     }
 
+
     /* =====================================================
        SEARCH MODE
        ===================================================== */
 
-    /* Automatic IT Act */
-    if (!act && q.includes("information technology act")) {
+    /* -----------------------------------------------------
+       INFORMATION TECHNOLOGY ACT
+       ----------------------------------------------------- */
+
+    if (
+      !act &&
+      q.includes(
+        "information technology act"
+      )
+    ) {
       act = "it-act";
     }
 
-    if (!act && q.includes("it act")) {
+    if (
+      !act &&
+      q.includes("it act")
+    ) {
       act = "it-act";
     }
 
-    /* IPC */
-    if (!act && q.includes("indian penal code")) {
+
+    /* -----------------------------------------------------
+       IPC
+       ----------------------------------------------------- */
+
+    if (
+      !act &&
+      q.includes(
+        "indian penal code"
+      )
+    ) {
       act = "ipc";
     }
 
-    if (!act && /\bipc\b/i.test(q)) {
+    if (
+      !act &&
+      /\bipc\b/i.test(q)
+    ) {
       act = "ipc";
     }
 
-    /* BNS */
-    if (!act && q.includes("bharatiya nyaya sanhita")) {
+
+    /* -----------------------------------------------------
+       BNS
+       ----------------------------------------------------- */
+
+    if (
+      !act &&
+      q.includes(
+        "bharatiya nyaya sanhita"
+      )
+    ) {
       act = "bns";
     }
 
-    if (!act && /\bbns\b/i.test(q)) {
+    if (
+      !act &&
+      /\bbns\b/i.test(q)
+    ) {
       act = "bns";
     }
 
-    /* CrPC */
-    if (!act && q.includes("code of criminal procedure")) {
+
+    /* -----------------------------------------------------
+       CrPC
+       ----------------------------------------------------- */
+
+    if (
+      !act &&
+      q.includes(
+        "code of criminal procedure"
+      )
+    ) {
       act = "crpc";
     }
 
-    if (!act && /\bcrpc\b/i.test(q)) {
+    if (
+      !act &&
+      /\bcrpc\b/i.test(q)
+    ) {
       act = "crpc";
     }
 
-    /* BNSS */
-    if (!act && q.includes("bharatiya nagarik suraksha sanhita")) {
+
+    /* -----------------------------------------------------
+       BNSS
+       ----------------------------------------------------- */
+
+    if (
+      !act &&
+      q.includes(
+        "bharatiya nagarik suraksha sanhita"
+      )
+    ) {
       act = "bnss";
     }
 
-    if (!act && /\bbnss\b/i.test(q)) {
+    if (
+      !act &&
+      /\bbnss\b/i.test(q)
+    ) {
       act = "bnss";
     }
 
-    /* BSA */
-    if (!act && q.includes("bharatiya sakshya adhiniyam")) {
+
+    /* -----------------------------------------------------
+       BSA
+       ----------------------------------------------------- */
+
+    if (
+      !act &&
+      q.includes(
+        "bharatiya sakshya adhiniyam"
+      )
+    ) {
       act = "bsa";
     }
 
-    if (!act && /\bbsa\b/i.test(q)) {
+    if (
+      !act &&
+      /\bbsa\b/i.test(q)
+    ) {
       act = "bsa";
     }
 
-    /* Evidence Act */
-    if (!act && q.includes("evidence act")) {
+
+    /* -----------------------------------------------------
+       EVIDENCE ACT
+       ----------------------------------------------------- */
+
+    if (
+      !act &&
+      q.includes(
+        "evidence act"
+      )
+    ) {
       act = "evidence-act";
     }
 
-    /* CPC */
-    if (!act && q.includes("code of civil procedure")) {
+
+    /* -----------------------------------------------------
+       CPC
+       ----------------------------------------------------- */
+
+    if (
+      !act &&
+      q.includes(
+        "code of civil procedure"
+      )
+    ) {
       act = "cpc";
     }
 
-    if (!act && /\bcpc\b/i.test(q)) {
+    if (
+      !act &&
+      /\bcpc\b/i.test(q)
+    ) {
       act = "cpc";
     }
 
-    /* NI Act */
+
+    /* -----------------------------------------------------
+       NEGOTIABLE INSTRUMENTS ACT
+       ----------------------------------------------------- */
+
     if (
       !act &&
       (
-        q.includes("negotiable instruments act") ||
+        q.includes(
+          "negotiable instruments act"
+        ) ||
         q.includes("cheque bounce") ||
         q.includes("cheque dishonour") ||
         q.includes("cheque dishonor")
@@ -215,6 +454,7 @@ export default async function handler(req, res) {
     ) {
       act = "ni-act";
     }
+
 
     if (
       act === "ni-act" &&
@@ -228,33 +468,47 @@ export default async function handler(req, res) {
       section = "138";
     }
 
-    /* POCSO */
+
+    /* -----------------------------------------------------
+       POCSO
+       ----------------------------------------------------- */
+
     if (
       !act &&
       (
         q.includes("pocso") ||
-        q.includes("protection of children from sexual offences")
+        q.includes(
+          "protection of children from sexual offences"
+        )
       )
     ) {
       act = "pocso";
     }
 
-    /* NDPS */
+
+    /* -----------------------------------------------------
+       NDPS
+       ----------------------------------------------------- */
+
     if (
       !act &&
       (
         q.includes("ndps") ||
-        q.includes("narcotic drugs and psychotropic substances")
+        q.includes(
+          "narcotic drugs and psychotropic substances"
+        )
       )
     ) {
       act = "ndps-act";
     }
+
 
     /* =====================================================
        SECTION DETECTION
        ===================================================== */
 
     if (!section) {
+
       const m =
         q.match(
           /\b(?:section|sec\.?)\s*([0-9]+[a-z]?(?:\([a-z0-9]+\))?)\b/i
@@ -266,131 +520,275 @@ export default async function handler(req, res) {
           /\bit\s+act\s+(?:section\s*)?([0-9]+[a-z]?)\b/i
         );
 
-      if (m) section = m[1];
+      if (m) {
+        section = m[1];
+      }
     }
 
+
     /* =====================================================
-       COURT
+       COURT DETECTION
        ===================================================== */
 
     if (!court) {
-      if (q.includes("supreme court")) {
+
+      if (
+        q.includes("supreme court")
+      ) {
+
         court = "SC";
-      } else if (q.includes("high court")) {
+
+      } else if (
+        q.includes("high court")
+      ) {
+
         court = "HC";
       }
     }
+
 
     /* =====================================================
        DATABASE SEARCH
        ===================================================== */
 
-    const params = new URLSearchParams();
+    const params =
+      new URLSearchParams();
 
-    if (act) params.set("act", act);
-    if (section) params.set("section", section);
-    if (court) params.set("court", court);
+    if (act) {
+      params.set("act", act);
+    }
 
-    params.set("limit", "100");
+    if (section) {
+      params.set(
+        "section",
+        section
+      );
+    }
+
+    if (court) {
+      params.set(
+        "court",
+        court
+      );
+    }
+
+    params.set(
+      "limit",
+      "100"
+    );
+
 
     let url =
       `${API_BASE}/judgments?${params.toString()}`;
 
+
     const allJudgments = [];
+
     let total = 0;
 
+
     while (url) {
-      const response = await fetch(url);
-      const data = await response.json();
+
+      const response =
+        await fetch(url);
+
+      const data =
+        await response.json();
+
 
       if (!response.ok) {
-        return res.status(response.status).json({
+
+        return res.status(
+          response.status
+        ).json({
+
           error:
             data.error ||
             "Judgment search failed"
+
         });
       }
 
-      total = data.total || total;
 
-      if (Array.isArray(data.judgments)) {
+      total =
+        data.total ||
+        total;
+
+
+      if (
+        Array.isArray(
+          data.judgments
+        )
+      ) {
+
         allJudgments.push(
           ...data.judgments
         );
       }
 
-      url = data.next || null;
 
-      if (allJudgments.length >= 500) break;
+      url =
+        data.next ||
+        null;
+
+
+      if (
+        allJudgments.length >= 500
+      ) {
+        break;
+      }
     }
 
+
     /* =====================================================
-       SEARCH SCORING
+       NORMALIZATION
        ===================================================== */
 
     function normalize(value) {
+
       return String(value || "")
         .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, " ")
-        .replace(/\s+/g, " ")
+        .replace(
+          /[^a-z0-9\s]/g,
+          " "
+        )
+        .replace(
+          /\s+/g,
+          " "
+        )
         .trim();
     }
 
-    const stopWords = new Set([
-      "the","and","for","where","with","from",
-      "that","this","case","cases","judgment",
-      "judgments","judgement","judgements",
-      "supreme","court","high","section",
-      "sections","act","under","about","what",
-      "which","how","does","can","tell","explain",
-      "meaning","law","legal","provision","india",
-      "indian","of","to","in","on","is","are",
-      "was","were","a","an","whether","find"
-    ]);
+
+    /* =====================================================
+       STOP WORDS
+       ===================================================== */
+
+    const stopWords =
+      new Set([
+
+        "the",
+        "and",
+        "for",
+        "where",
+        "with",
+        "from",
+        "that",
+        "this",
+        "case",
+        "cases",
+        "judgment",
+        "judgments",
+        "judgement",
+        "judgements",
+        "supreme",
+        "court",
+        "high",
+        "section",
+        "sections",
+        "act",
+        "under",
+        "about",
+        "what",
+        "which",
+        "how",
+        "does",
+        "can",
+        "tell",
+        "explain",
+        "meaning",
+        "law",
+        "legal",
+        "provision",
+        "india",
+        "indian",
+        "of",
+        "to",
+        "in",
+        "on",
+        "is",
+        "are",
+        "was",
+        "were",
+        "a",
+        "an",
+        "whether",
+        "find"
+      ]);
+
 
     const words =
       normalize(userQuery)
         .split(/\s+/)
         .filter(
-          w =>
-            w.length >= 3 &&
-            !stopWords.has(w)
+          word =>
+            word.length >= 3 &&
+            !stopWords.has(word)
         );
 
+
+    /* =====================================================
+       SCORING
+       ===================================================== */
+
     function score(j) {
-      const title = normalize(
-        j.title || j.case_name
-      );
 
-      const facts = normalize(
-        j.facts || j.case_facts
-      );
+      const title =
+        normalize(
+          j.title ||
+          j.case_name ||
+          j.caseName
+        );
 
-      const issues = normalize(
-        j.issues || j.legal_issues
-      );
 
-      const ratio = normalize(
-        j.ratio_decidendi || j.ratio
-      );
+      const facts =
+        normalize(
+          j.facts ||
+          j.case_facts
+        );
 
-      const decision = normalize(
-        j.decision || j.holding
-      );
 
-      const applied = normalize(
-        j.applied_to_this_section
-      );
+      const issues =
+        normalize(
+          j.issues ||
+          j.legal_issues
+        );
 
-      const basis = normalize(
-        j.basis
-      );
 
-      const decided = normalize(
-        j.decided_under
-      );
+      const ratio =
+        normalize(
+          j.ratio_decidendi ||
+          j.ratio
+        );
+
+
+      const decision =
+        normalize(
+          j.decision ||
+          j.holding
+        );
+
+
+      const applied =
+        normalize(
+          j.applied_to_this_section
+        );
+
+
+      const basis =
+        normalize(
+          j.basis
+        );
+
+
+      const decided =
+        normalize(
+          j.decided_under
+        );
+
 
       const text = [
+
         title,
         facts,
         issues,
@@ -399,30 +797,106 @@ export default async function handler(req, res) {
         applied,
         basis,
         decided
+
       ].join(" ");
 
-      let score = 0;
+
+      let result = 0;
+
 
       if (section) {
-        const sec = normalize(section);
 
-        if (applied.includes(sec)) score += 100;
-        if (decided.includes(sec)) score += 80;
-        if (basis.includes(sec)) score += 60;
-        if (text.includes(`section ${sec}`)) score += 40;
+        const sec =
+          normalize(section);
+
+
+        if (
+          applied.includes(sec)
+        ) {
+          result += 100;
+        }
+
+
+        if (
+          decided.includes(sec)
+        ) {
+          result += 80;
+        }
+
+
+        if (
+          basis.includes(sec)
+        ) {
+          result += 60;
+        }
+
+
+        if (
+          text.includes(
+            `section ${sec}`
+          )
+        ) {
+          result += 40;
+        }
       }
 
-      for (const word of words) {
-        if (title.includes(word)) score += 18;
-        if (issues.includes(word)) score += 15;
-        if (ratio.includes(word)) score += 14;
-        if (applied.includes(word)) score += 16;
-        if (basis.includes(word)) score += 10;
-        if (decision.includes(word)) score += 9;
-        if (facts.includes(word)) score += 5;
+
+      for (
+        const word of words
+      ) {
+
+        if (
+          title.includes(word)
+        ) {
+          result += 18;
+        }
+
+
+        if (
+          issues.includes(word)
+        ) {
+          result += 15;
+        }
+
+
+        if (
+          ratio.includes(word)
+        ) {
+          result += 14;
+        }
+
+
+        if (
+          applied.includes(word)
+        ) {
+          result += 16;
+        }
+
+
+        if (
+          basis.includes(word)
+        ) {
+          result += 10;
+        }
+
+
+        if (
+          decision.includes(word)
+        ) {
+          result += 9;
+        }
+
+
+        if (
+          facts.includes(word)
+        ) {
+          result += 5;
+        }
       }
+
 
       const phrases = [
+
         "unauthorized access",
         "unauthorised access",
         "civil dispute",
@@ -439,60 +913,127 @@ export default async function handler(req, res) {
         "dishonour of cheque",
         "dishonor of cheque",
         "service of notice"
+
       ];
 
-      for (const phrase of phrases) {
-        if (q.includes(phrase)) {
-          if (text.includes(phrase)) score += 30;
-          if (issues.includes(phrase)) score += 25;
-          if (ratio.includes(phrase)) score += 25;
+
+      for (
+        const phrase of phrases
+      ) {
+
+        if (
+          q.includes(phrase)
+        ) {
+
+          if (
+            text.includes(phrase)
+          ) {
+            result += 30;
+          }
+
+
+          if (
+            issues.includes(phrase)
+          ) {
+            result += 25;
+          }
+
+
+          if (
+            ratio.includes(phrase)
+          ) {
+            result += 25;
+          }
         }
       }
 
+
+      const courtName =
+        normalize(
+          j.court_name ||
+          j.court
+        );
+
+
       if (
         court === "SC" &&
-        normalize(j.court_name || j.court)
-          .includes("supreme")
+        courtName.includes(
+          "supreme"
+        )
       ) {
-        score += 30;
+        result += 30;
       }
+
 
       if (
         court === "HC" &&
-        normalize(j.court_name || j.court)
-          .includes("high")
+        courtName.includes(
+          "high"
+        )
       ) {
-        score += 20;
+        result += 20;
       }
 
-      if (ratio) score += 8;
-      if (issues) score += 6;
-      if (decision) score += 6;
-      if (applied) score += 12;
 
-      return score;
+      if (ratio) {
+        result += 8;
+      }
+
+
+      if (issues) {
+        result += 6;
+      }
+
+
+      if (decision) {
+        result += 6;
+      }
+
+
+      if (applied) {
+        result += 12;
+      }
+
+
+      return result;
     }
+
 
     /* =====================================================
        DEDUPLICATION
        ===================================================== */
 
-    const seen = new Set();
+    const seen =
+      new Set();
+
 
     const unique =
-      allJudgments.filter(j => {
-        const key = normalize(
-          j.title ||
-          j.case_name ||
-          j.cnr ||
-          j.url
-        );
+      allJudgments.filter(
+        j => {
 
-        if (!key || seen.has(key)) return false;
+          const key =
+            normalize(
+              j.title ||
+              j.case_name ||
+              j.cnr ||
+              j.url
+            );
 
-        seen.add(key);
-        return true;
-      });
+
+          if (
+            !key ||
+            seen.has(key)
+          ) {
+            return false;
+          }
+
+
+          seen.add(key);
+
+          return true;
+        }
+      );
+
 
     /* =====================================================
        RANK
@@ -501,19 +1042,41 @@ export default async function handler(req, res) {
     const ranked =
       unique
         .map(j => ({
+
           judgment: j,
-          score: score(j)
+
+          score:
+            score(j)
+
         }))
         .sort(
           (a, b) =>
-            b.score - a.score
+            b.score -
+            a.score
         );
 
-    function relevance(score) {
-      if (score >= 100) return "Direct";
-      if (score >= 50) return "Related";
+
+    function relevance(
+      value
+    ) {
+
+      if (
+        value >= 100
+      ) {
+        return "Direct";
+      }
+
+
+      if (
+        value >= 50
+      ) {
+        return "Related";
+      }
+
+
       return "Low";
     }
+
 
     /* =====================================================
        FINAL RESULTS
@@ -523,20 +1086,34 @@ export default async function handler(req, res) {
       ranked
         .slice(0, 20)
         .map(item => {
-          const j = item.judgment;
+
+          const j =
+            item.judgment;
+
 
           return {
+
             verified: true,
 
             relevanceScore:
               item.score,
 
             relevance:
-              relevance(item.score),
+              relevance(
+                item.score
+              ),
+
+            /*
+             * IMPORTANT:
+             * Keep multiple possible database
+             * field names so the frontend never
+             * displays "Unnamed judgment".
+             */
 
             caseName:
               j.title ||
               j.case_name ||
+              j.caseName ||
               null,
 
             court:
@@ -559,6 +1136,7 @@ export default async function handler(req, res) {
 
             cnr:
               j.cnr ||
+              j.CNR ||
               null,
 
             facts:
@@ -605,25 +1183,38 @@ export default async function handler(req, res) {
             source:
               j.url ||
               j.source ||
+              null,
+
+            document:
+              j.document ||
+              j.pdf ||
+              j.document_url ||
               null
           };
         });
 
+
     return res.status(200).json({
+
       verified: true,
+
       mode: "search",
 
       query:
-        userQuery || null,
+        userQuery ||
+        null,
 
       act:
-        act || null,
+        act ||
+        null,
 
       section:
-        section || null,
+        section ||
+        null,
 
       court:
-        court || null,
+        court ||
+        null,
 
       total,
 
@@ -633,14 +1224,19 @@ export default async function handler(req, res) {
       judgments
     });
 
+
   } catch (error) {
+
     console.error(
       "LawBot judgment error:",
       error
     );
 
+
     return res.status(500).json({
+
       verified: false,
+
       error:
         error.message ||
         "Judgment operation failed"
@@ -654,7 +1250,9 @@ export default async function handler(req, res) {
    ========================================================= */
 
 function normalizeJudgment(j) {
+
   return {
+
     verified: true,
 
     caseName:
@@ -683,6 +1281,7 @@ function normalizeJudgment(j) {
 
     cnr:
       j.cnr ||
+      j.CNR ||
       null,
 
     judge:
@@ -762,6 +1361,12 @@ function normalizeJudgment(j) {
       j.document ||
       j.pdf ||
       j.document_url ||
+      null,
+
+    order:
+      j.order ||
+      j.document_type ||
+      j.type ||
       null
   };
 }
@@ -772,15 +1377,22 @@ function normalizeJudgment(j) {
    ========================================================= */
 
 function cleanDecision(value) {
-  if (!value) return null;
 
-  const text = String(value).trim();
+  if (!value) {
+    return null;
+  }
+
+
+  const text =
+    String(value).trim();
+
 
   if (
     /\.(pdf|doc|docx)$/i.test(text)
   ) {
     return null;
   }
+
 
   return text;
 }
